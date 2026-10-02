@@ -4,14 +4,32 @@ const props = defineProps({ user: Object, currentScreen: String })
 const emit = defineEmits(['navigate'])
 
 const tabs = computed(() => {
-  if (props.user.roles.includes('admin')) return [
-    ['admin-home','⌂','Inicio'], ['users-list','👥','Gestión'], ['sessions-list','📅','Jornadas'], ['metrics','📊','Métricas'], ['ai-query','🤖','Consulta']
-  ]
-  if (props.user.roles.includes('cashier')) return [
-    ['cashier-home','⌂','Inicio'], ['register-sale','🛒','Nueva venta'], ['sales-list','📋','Ventas'], ['ai-query','🤖','Consulta']
-  ]
+
+  if (props.user.roles.includes('ADMINISTRADOR')) {
+    return [
+      ['admin-home', '⌂', 'Inicio'],
+      ['users-list', '👥', 'Gestión'],
+      ['sessions-list', '📅', 'Jornadas'],
+      ['metrics', '📊', 'Métricas'],
+      ['ai-query', '🤖', 'Consulta']
+    ]
+  }
+
+  if (props.user.roles.includes('CAJERO')) {
+    return [
+      ['cashier-home', '⌂', 'Inicio'],
+      ['register-sale', '🛒', 'Nueva venta'],
+      ['sales-list', '📋', 'Ventas'],
+      ['ai-query', '🤖', 'Consulta']
+    ]
+  }
+
   return [
-    ['entrepreneur-home','⌂','Inicio'], ['businesses-list','🏪','Emprend.'], ['products-list','📦','Inventario'], ['sales-list','📋','Ventas'], ['ai-query','🤖','Consulta']
+    ['entrepreneur-home', '⌂', 'Inicio'],
+    ['businesses-list', '🏪', 'Emprend.'],
+    ['products-list', '📦', 'Inventario'],
+    ['sales-list', '📋', 'Ventas'],
+    ['ai-query', '🤖', 'Consulta']
   ]
 })
 </script>

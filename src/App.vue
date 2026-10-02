@@ -8,6 +8,9 @@ import AdminHome from './screens/AdminHome.vue'
 import CashierHome from './screens/CashierHome.vue'
 import EntrepreneurHome from './screens/EntrepreneurHome.vue'
 import Users from './screens/Users.vue'
+import UserDetail from './screens/UserDetail.vue'
+import UserCreate from './screens/UserCreate.vue'
+import UserEdit from './screens/UserEdit.vue'
 import Businesses from './screens/Businesses.vue'
 import Products from './screens/Products.vue'
 import Sessions from './screens/Sessions.vue'
@@ -19,25 +22,85 @@ import Metrics from './screens/Metrics.vue'
 import AIQuery from './screens/AIQuery.vue'
 
 const store=reactive(structuredClone(initialStore))
-const currentUser=ref(null)
-const screen=ref('login')
+const savedUser = localStorage.getItem('usuario')
+
+const currentUser = ref(
+  savedUser
+    ? JSON.parse(savedUser)
+    : null
+)
+
+const screen = ref(
+  currentUser.value
+    ? homeFor(currentUser.value)
+    : 'login'
+)
 const params=reactive({})
 const history=ref([])
-function homeFor(user){return user.roles.includes('admin')?'admin-home':user.roles.includes('cashier')?'cashier-home':'entrepreneur-home'}
-function login(user){currentUser.value=user;history.value=[];screen.value=homeFor(user);Object.keys(params).forEach(k=>delete params[k])}
-function logout(){currentUser.value=null;history.value=[];screen.value='login';Object.keys(params).forEach(k=>delete params[k])}
+function homeFor(user) {
+  if (user.roles.includes('ADMINISTRADOR')) {
+    return 'admin-home'
+  }
+
+  if (user.roles.includes('CAJERO')) {
+    return 'cashier-home'
+  }
+
+  if (user.roles.includes('EMPRENDEDOR')) {
+    return 'entrepreneur-home'
+  }
+
+  return 'login'
+}
+
+function login(user) {
+  currentUser.value = user
+
+  localStorage.setItem(
+    'usuario',
+    JSON.stringify(user)
+  )
+
+  history.value = []
+
+  screen.value = homeFor(user)
+
+  Object.keys(params).forEach(
+    key => delete params[key]
+  )
+}
+function logout() {
+  localStorage.removeItem('token')
+  localStorage.removeItem('usuario')
+
+  currentUser.value = null
+  history.value = []
+
+  screen.value = 'login'
+
+  Object.keys(params).forEach(
+    key => delete params[key]
+  )
+}
 function navigate(next,nextParams={}){if(screen.value!=='login')history.value.push({screen:screen.value,params:{...params}});screen.value=next;Object.keys(params).forEach(k=>delete params[k]);Object.assign(params,nextParams)}
 const showNav=computed(()=>currentUser.value && ['admin-home','cashier-home','entrepreneur-home','users-list','businesses-list','products-list','sessions-list','sales-list','metrics','ai-query'].includes(screen.value))
 </script>
 <template>
   <PhoneFrame>
-    <Login v-if="!currentUser || screen==='login'" :users="store.users" @login="login" />
+    <Login v-if="!currentUser || screen==='login'" @login="login" />
     <div v-else class="h-full flex flex-col overflow-hidden bg-[#F5F0E8]">
       <div class="flex-1 overflow-hidden">
         <AdminHome v-if="screen==='admin-home'" :user="currentUser" :store="store" @navigate="navigate" @logout="logout" />
         <CashierHome v-else-if="screen==='cashier-home'" :user="currentUser" :store="store" @navigate="navigate" @logout="logout" />
         <EntrepreneurHome v-else-if="screen==='entrepreneur-home'" :user="currentUser" :store="store" @navigate="navigate" @logout="logout" />
-        <Users v-else-if="screen==='users-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
+        <Users v-else-if="screen==='users-list'" @navigate="navigate" />
+        <UserCreate v-else-if="screen==='user-create'" @navigate="navigate" />
+        <UserEdit v-else-if="screen==='user-edit'" :id-usuario="params.idUsuario" @navigate="navigate" />
+        <UserDetail
+          v-else-if="screen === 'user-detail'"
+          :id-usuario="params.idUsuario"
+          @navigate="navigate"
+        />
         <Businesses v-else-if="screen==='businesses-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
         <Products v-else-if="screen==='products-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
         <Sessions v-else-if="screen==='sessions-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
