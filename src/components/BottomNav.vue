@@ -1,46 +1,94 @@
 <script setup>
 import { computed } from 'vue'
-const props = defineProps({ user: Object, currentScreen: String })
-const emit = defineEmits(['navigate'])
+
+import {
+  obtenerBottomTabs
+} from '../config/navigation.js'
+
+
+const props = defineProps({
+  user: {
+    type: Object,
+    required: true
+  },
+
+  currentScreen: {
+    type: String,
+    default: 'home'
+  }
+})
+
+
+const emit = defineEmits([
+  'navigate'
+])
+
 
 const tabs = computed(() => {
-
-  if (props.user.roles.includes('ADMINISTRADOR')) {
-    return [
-      ['admin-home', '⌂', 'Inicio'],
-      ['users-list', '👥', 'Gestión'],
-      ['sessions-list', '📅', 'Jornadas'],
-      ['metrics', '📊', 'Métricas'],
-      ['ai-query', '🤖', 'Consulta']
-    ]
-  }
-
-  if (props.user.roles.includes('CAJERO')) {
-    return [
-      ['cashier-home', '⌂', 'Inicio'],
-      ['register-sale', '🛒', 'Nueva venta'],
-      ['sales-list', '📋', 'Ventas'],
-      ['ai-query', '🤖', 'Consulta']
-    ]
-  }
-
-  return [
-    ['entrepreneur-home', '⌂', 'Inicio'],
-    ['businesses-list', '🏪', 'Emprend.'],
-    ['products-list', '📦', 'Inventario'],
-    ['sales-list', '📋', 'Ventas'],
-    ['ai-query', '🤖', 'Consulta']
-  ]
+  return obtenerBottomTabs(
+    props.user?.roles || []
+  )
 })
 </script>
+
+
 <template>
-  <div class="sticky bottom-0 bg-white/95 backdrop-blur border-t border-[#D8CFC4]/60 px-1 safe-bottom">
-    <div class="flex items-center justify-around py-1">
-      <button v-for="tab in tabs" :key="tab[0]" @click="emit('navigate', tab[0])" class="flex flex-col items-center gap-0.5 py-2 px-2 rounded-xl" :class="currentScreen===tab[0] ? 'text-[#2A6049]' : 'text-[#7A6558]'">
-        <span class="text-lg">{{ tab[1] }}</span>
-        <span class="text-[9px] font-semibold">{{ tab[2] }}</span>
-        <span v-if="currentScreen===tab[0]" class="w-1 h-1 rounded-full bg-[#2A6049]"></span>
-      </button>
-    </div>
-  </div>
+
+  <nav
+    class="
+      bg-white
+      border-t
+      border-[#D8CFC4]
+      flex
+      items-center
+      justify-around
+      px-1
+      py-2
+    "
+  >
+
+    <button
+      v-for="tab in tabs"
+      :key="tab.screen"
+      @click="
+        emit(
+          'navigate',
+          tab.screen
+        )
+      "
+      class="
+        flex
+        flex-col
+        items-center
+        justify-center
+        flex-1
+        py-1
+        rounded-xl
+        transition
+      "
+      :class="
+        currentScreen === tab.screen
+          ? 'text-[#2A6049] bg-[#EEF3F0]'
+          : 'text-[#7A6558]'
+      "
+    >
+
+      <span class="text-lg">
+        {{ tab.icon }}
+      </span>
+
+      <span
+        class="
+          text-[10px]
+          font-semibold
+          mt-1
+        "
+      >
+        {{ tab.label }}
+      </span>
+
+    </button>
+
+  </nav>
+
 </template>

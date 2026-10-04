@@ -1,11 +1,14 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { alertController } from '@ionic/vue'
 
 import AppHeader from '../components/AppHeader.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 
 import {
-  obtenerUsuario
+  obtenerUsuario,
+  desactivarUsuario,
+  reactivarUsuario
 } from '../services/usuarioService.js'
 
 
@@ -22,7 +25,7 @@ const emit = defineEmits(['navigate'])
 const usuario = ref(null)
 const loading = ref(false)
 const error = ref('')
-
+const procesando = ref(false)
 
 async function cargarUsuario() {
   loading.value = true
@@ -51,6 +54,123 @@ async function cargarUsuario() {
   }
 }
 
+async function desactivar() {
+
+  if (!usuario.value) {
+    return
+  }
+
+
+  procesando.value = true
+  error.value = ''
+
+  try {
+
+    await desactivarUsuario(
+      usuario.value.id
+    )
+
+    emit(
+      'navigate',
+      'users-list'
+    )
+
+  } catch (err) {
+
+    console.error(err)
+
+    error.value =
+      err.message ||
+      'No se pudo desactivar el usuario.'
+
+  } finally {
+
+    procesando.value = false
+  }
+}
+
+async function confirmarDesactivacion() {
+  if (!usuario.value) {
+    return
+  }
+
+  const alert = await alertController.create({
+    header: 'Desactivar usuario',
+    message: `¿Desea desactivar al usuario "${usuario.value.nombre}"?`,
+    buttons: [
+      {
+        text: 'Cancelar',
+        role: 'cancel'
+      },
+      {
+        text: 'Desactivar',
+        role: 'destructive',
+        handler: () => {
+          desactivar()
+        }
+      }
+    ]
+  })
+
+  await alert.present()
+}
+
+async function reactivar() {
+
+  if (!usuario.value) {
+    return
+  }
+
+  procesando.value = true
+  error.value = ''
+
+  try {
+
+    await reactivarUsuario(
+      usuario.value.id
+    )
+
+    // Volvemos a cargar el detalle
+    await cargarUsuario()
+
+  } catch (err) {
+
+    console.error(err)
+
+    error.value =
+      err.message ||
+      'No se pudo reactivar el usuario.'
+
+  } finally {
+
+    procesando.value = false
+  }
+}
+
+async function confirmarReactivacion() {
+  if (!usuario.value) {
+    return
+  }
+
+  const alert = await alertController.create({
+    header: 'Reactivar usuario',
+    message: `¿Desea reactivar al usuario "${usuario.value.nombre}"?`,
+    buttons: [
+      {
+        text: 'Cancelar',
+        role: 'cancel'
+      },
+      {
+        text: 'Reactivar',
+        handler: () => {
+          reactivar()
+        }
+      }
+    ]
+  })
+
+  await alert.present()
+}
 
 onMounted(() => {
   cargarUsuario()
@@ -371,23 +491,46 @@ onMounted(() => {
           </BaseButton>
 
 
+          <!-- USUARIO ACTIVO -->
+
           <BaseButton
+            v-if="usuario.estado"
             class="flex-1"
-            :variant="
-              usuario.estado
-                ? 'danger'
-                : 'secondary'
-            "
+            variant="danger"
+            :disabled="procesando"
+            @click="confirmarDesactivacion"
           >
-
             {{
-              usuario.estado
-                ? 'Desactivar'
-                : 'Reactivar'
+              procesando
+                ? 'Procesando...'
+                : 'Desactivar'
             }}
-
           </BaseButton>
 
+
+          <!-- USUARIO INACTIVO -->
+
+          <BaseButton
+            v-else
+            class="
+              flex-1
+              !bg-[#2A6049]
+              !text-white
+              !border-[#2A6049]
+              hover:!bg-[#214D3B]
+              disabled:opacity-50
+            "
+            variant="outline"
+            :disabled="procesando"
+            @click="confirmarReactivacion"
+          >
+            {{
+              procesando
+                ? 'Procesando...'
+                : 'Reactivar'
+            }}
+          </BaseButton>
+          
         </div>
 
       </div>

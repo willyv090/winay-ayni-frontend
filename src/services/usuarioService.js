@@ -32,3 +32,15 @@ export async function editarUsuario(id, datos) {
     body: JSON.stringify(datos)
   })
 }
+
+export async function desactivarUsuario(id) {
+  return await apiRequest(`/api/personas/${id}`, {
+    method: 'DELETE'
+  })
+}
+
+export async function reactivarUsuario(id) {
+  return await apiRequest(`/api/personas/${id}/reactivar`, {
+    method: 'PUT'
+  })
+}

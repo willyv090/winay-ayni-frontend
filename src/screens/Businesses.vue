@@ -9,7 +9,7 @@ import { genId } from '../utils/helpers.js'
 
 const props = defineProps({ store:Object, currentUser:Object })
 const emit = defineEmits(['navigate'])
-const isAdmin = computed(()=>props.currentUser.roles.includes('admin'))
+const isAdmin = computed(()=>props.currentUser.roles.includes('ADMINISTRADOR'))
 const view = ref('list'), editing = ref(null), search = ref(''), modal = ref(null), toast = ref('')
 const errors = reactive({})
 const form = reactive({ name:'', address:'', phone:'' })
@@ -39,7 +39,12 @@ function toggle(){if(!modal.value)return;modal.value.active=!modal.value.active;
       </div>
     </template>
     <template v-else>
-      <AppHeader title="Emprendimientos" show-back @back="emit('navigate',isAdmin?'admin-home':'entrepreneur-home')"><template #right><BaseButton v-if="isAdmin" size="sm" @click="openCreate">+ Nuevo</BaseButton></template></AppHeader>
+      <AppHeader
+        title="Emprendimientos"
+        show-back
+        @back="emit('navigate', 'home')"
+      >
+      <template #right><BaseButton v-if="isAdmin" size="sm" @click="openCreate">+ Nuevo</BaseButton></template></AppHeader>
       <div class="flex-1 overflow-y-auto p-4">
         <input v-model="search" placeholder="Buscar emprendimiento..." class="w-full h-10 rounded-xl border border-[#D8CFC4] bg-white px-4 text-sm mb-4" />
         <div v-if="visibleBusinesses.length===0" class="text-center text-sm text-[#7A6558] py-12">No existen emprendimientos para mostrar.</div>

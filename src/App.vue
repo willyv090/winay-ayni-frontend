@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { alertController } from '@ionic/vue'
 import PhoneFrame from './components/PhoneFrame.vue'
 import BottomNav from './components/BottomNav.vue'
 import { initialStore } from './data/mockData.js'
@@ -20,6 +21,10 @@ import SaleDetail from './screens/SaleDetail.vue'
 import SessionResults from './screens/SessionResults.vue'
 import Metrics from './screens/Metrics.vue'
 import AIQuery from './screens/AIQuery.vue'
+import Home from './screens/Home.vue'
+import {
+  puedeAcceder
+} from './config/navigation.js'
 
 const store=reactive(structuredClone(initialStore))
 const savedUser = localStorage.getItem('usuario')
@@ -37,20 +42,8 @@ const screen = ref(
 )
 const params=reactive({})
 const history=ref([])
-function homeFor(user) {
-  if (user.roles.includes('ADMINISTRADOR')) {
-    return 'admin-home'
-  }
-
-  if (user.roles.includes('CAJERO')) {
-    return 'cashier-home'
-  }
-
-  if (user.roles.includes('EMPRENDEDOR')) {
-    return 'entrepreneur-home'
-  }
-
-  return 'login'
+function homeFor() {
+  return 'home'
 }
 
 function login(user) {
@@ -82,7 +75,68 @@ function logout() {
     key => delete params[key]
   )
 }
-function navigate(next,nextParams={}){if(screen.value!=='login')history.value.push({screen:screen.value,params:{...params}});screen.value=next;Object.keys(params).forEach(k=>delete params[k]);Object.assign(params,nextParams)}
+async function navigate(
+  next,
+  nextParams = {}
+) {
+
+  // ==========================
+  // VALIDAR PERMISOS
+  // ==========================
+
+  if (
+    currentUser.value &&
+    !puedeAcceder(
+      next,
+      currentUser.value.roles
+    )
+  ) {
+
+    const alert = await alertController.create({
+      header: 'Acceso no permitido',
+      message:
+        'No tiene permisos para acceder a esta función.',
+      buttons: ['Aceptar']
+    })
+
+    await alert.present()
+
+    return
+  }
+
+
+  // ==========================
+  // GUARDAR HISTORIAL
+  // ==========================
+
+  if (screen.value !== 'login') {
+
+    history.value.push({
+      screen: screen.value,
+      params: {
+        ...params
+      }
+    })
+  }
+
+
+  // ==========================
+  // CAMBIAR PANTALLA
+  // ==========================
+
+  screen.value = next
+
+
+  Object.keys(params).forEach(
+    key => delete params[key]
+  )
+
+
+  Object.assign(
+    params,
+    nextParams
+  )
+}
 const showNav=computed(()=>currentUser.value && ['admin-home','cashier-home','entrepreneur-home','users-list','businesses-list','products-list','sessions-list','sales-list','metrics','ai-query'].includes(screen.value))
 </script>
 <template>
@@ -93,6 +147,12 @@ const showNav=computed(()=>currentUser.value && ['admin-home','cashier-home','en
         <AdminHome v-if="screen==='admin-home'" :user="currentUser" :store="store" @navigate="navigate" @logout="logout" />
         <CashierHome v-else-if="screen==='cashier-home'" :user="currentUser" :store="store" @navigate="navigate" @logout="logout" />
         <EntrepreneurHome v-else-if="screen==='entrepreneur-home'" :user="currentUser" :store="store" @navigate="navigate" @logout="logout" />
+        <Home
+          v-else-if="screen === 'home'"
+          :user="currentUser"
+          @navigate="navigate"
+          @logout="logout"
+        />
         <Users v-else-if="screen==='users-list'" @navigate="navigate" />
         <UserCreate v-else-if="screen==='user-create'" @navigate="navigate" />
         <UserEdit v-else-if="screen==='user-edit'" :id-usuario="params.idUsuario" @navigate="navigate" />
@@ -112,7 +172,12 @@ const showNav=computed(()=>currentUser.value && ['admin-home','cashier-home','en
         <AIQuery v-else-if="screen==='ai-query'" :store="store" :current-user="currentUser" @navigate="navigate" />
         <AdminHome v-else :user="currentUser" :store="store" @navigate="navigate" @logout="logout" />
       </div>
-      <BottomNav v-if="showNav" :user="currentUser" :current-screen="screen" @navigate="navigate" />
+      <BottomNav
+        v-if="currentUser && screen !== 'login'"
+        :user="currentUser"
+        :current-screen="screen"
+        @navigate="navigate"
+      />
     </div>
   </PhoneFrame>
 </template>

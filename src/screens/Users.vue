@@ -1,10 +1,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { alertController } from '@ionic/vue'
 
 import AppHeader from '../components/AppHeader.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 
-import { listarUsuarios } from '../services/usuarioService.js'
+import { listarUsuarios, desactivarUsuario, reactivarUsuario } from '../services/usuarioService.js'
 
 
 const emit = defineEmits(['navigate'])
@@ -14,7 +15,7 @@ const search = ref('')
 const filter = ref('todos')
 const loading = ref(false)
 const error = ref('')
-
+const procesandoId = ref(null)
 
 async function cargarUsuarios() {
   loading.value = true
@@ -114,6 +115,116 @@ function obtenerId(usuario) {
   return usuario.id || usuario.id_per
 }
 
+async function desactivar(usuario) {
+
+  const id = obtenerId(usuario)
+
+  procesandoId.value = id
+  error.value = ''
+
+  try {
+
+    const response = await desactivarUsuario(id)
+
+    console.log(
+      'Usuario desactivado:',
+      response
+    )
+
+    // Volvemos a consultar el listado real
+    await cargarUsuarios()
+
+  } catch (err) {
+
+    console.error(err)
+
+    error.value =
+      err.message ||
+      'No se pudo desactivar el usuario.'
+
+  } finally {
+
+    procesandoId.value = null
+  }
+}
+
+async function reactivar(usuario) {
+
+  const id = obtenerId(usuario)
+
+  procesandoId.value = id
+  error.value = ''
+
+  try {
+
+    const response = await reactivarUsuario(id)
+
+    console.log(
+      'Usuario reactivado:',
+      response
+    )
+
+    await cargarUsuarios()
+
+  } catch (err) {
+
+    console.error(err)
+
+    error.value =
+      err.message ||
+      'No se pudo reactivar el usuario.'
+
+  } finally {
+
+    procesandoId.value = null
+  }
+}
+
+async function confirmarDesactivacion(usuario) {
+
+  const alert = await alertController.create({
+    header: 'Desactivar usuario',
+    message: `¿Desea desactivar al usuario "${usuario.nombre}"?`,
+    buttons: [
+      {
+        text: 'Cancelar',
+        role: 'cancel'
+      },
+      {
+        text: 'Desactivar',
+        role: 'destructive',
+        handler: () => {
+          desactivar(usuario)
+        }
+      }
+    ]
+  })
+
+  await alert.present()
+}
+
+async function confirmarReactivacion(usuario) {
+
+  const alert = await alertController.create({
+    header: 'Reactivar usuario',
+    message: `¿Desea reactivar al usuario "${usuario.nombre}"?`,
+    buttons: [
+      {
+        text: 'Cancelar',
+        role: 'cancel'
+      },
+      {
+        text: 'Reactivar',
+        handler: () => {
+          reactivar(usuario)
+        }
+      }
+    ]
+  })
+
+  await alert.present()
+}
+
 function verUsuario(usuario) {
   emit(
     'navigate',
@@ -145,7 +256,7 @@ onMounted(() => {
     <AppHeader
       title="Usuarios"
       show-back
-      @back="emit('navigate', 'admin-home')"
+      @back="emit('navigate', 'home')"
     >
       <template #right>
         <BaseButton
@@ -289,14 +400,34 @@ onMounted(() => {
           </BaseButton>
 
           <BaseButton
+            v-if="estaActivo(usuario)"
             size="sm"
-            :variant="
-              estaActivo(usuario)
-                ? 'danger'
-                : 'secondary'
-            "
+            variant="danger"
+            @click="confirmarDesactivacion(usuario)"
           >
-            {{ estaActivo(usuario) ? 'Desactivar' : 'Reactivar' }}
+            Desactivar
+          </BaseButton>
+
+
+          <BaseButton
+            v-else
+            size="sm"
+            class="
+              !bg-[#2A6049]
+              !text-white
+              !border-[#2A6049]
+              hover:!bg-[#214D3B]
+              disabled:opacity-50
+            "
+            variant="outline"
+            :disabled="procesandoId === obtenerId(usuario)"
+            @click="confirmarReactivacion(usuario)"
+          >
+            {{
+              procesandoId === obtenerId(usuario)
+                ? 'Procesando...'
+                : 'Reactivar'
+            }}
           </BaseButton>
 
         </div>
