@@ -1,59 +1,665 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { alertController } from '@ionic/vue'
+
 import AppHeader from '../components/AppHeader.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
-import BaseInput from '../components/ui/BaseInput.vue'
-import AppModal from '../components/ui/AppModal.vue'
-import ToastMessage from '../components/ui/ToastMessage.vue'
-import { genId } from '../utils/helpers.js'
 
-const props = defineProps({ store:Object, currentUser:Object })
-const emit = defineEmits(['navigate'])
-const isAdmin = computed(()=>props.currentUser.roles.includes('ADMINISTRADOR'))
-const view = ref('list'), editing = ref(null), search = ref(''), modal = ref(null), toast = ref('')
-const errors = reactive({})
-const form = reactive({ name:'', address:'', phone:'' })
-const visibleBusinesses = computed(()=>{
-  const base = isAdmin.value ? props.store.businesses : props.store.businesses.filter(b=>props.currentUser.businessIds.includes(b.id))
-  const q=search.value.toLowerCase(); return base.filter(b=>!q || `${b.name} ${b.address} ${b.phone}`.toLowerCase().includes(q))
+import {
+  listarEmpresas,
+  desactivarEmpresa,
+  reactivarEmpresa
+} from '../services/empresaService.js'
+
+
+const props = defineProps({
+  currentUser: {
+    type: Object,
+    required: true
+  }
 })
-function notify(m){toast.value=m;setTimeout(()=>toast.value='',1800)}
-function clear(){Object.keys(errors).forEach(k=>delete errors[k])}
-function openCreate(){editing.value=null;Object.assign(form,{name:'',address:'',phone:''});clear();view.value='form'}
-function openEdit(b){editing.value=b;Object.assign(form,{name:b.name,address:b.address,phone:b.phone});clear();view.value='form'}
-function validate(){clear();if(!form.name.trim())errors.name='Este campo es obligatorio';if(form.phone && !/^\d{7,10}$/.test(form.phone.trim()))errors.phone='Ingrese un teléfono válido';const dup=props.store.businesses.find(b=>b.name.trim().toLowerCase()===form.name.trim().toLowerCase()&&b.id!==editing.value?.id);if(dup)errors.name='Ya existe un emprendimiento con estos datos';return Object.keys(errors).length===0}
-function save(){if(!validate())return;if(editing.value){Object.assign(editing.value,{name:form.name.trim(),address:form.address.trim(),phone:form.phone.trim()});notify('Cambios guardados correctamente')}else{props.store.businesses.push({id:genId('b'),name:form.name.trim(),address:form.address.trim(),phone:form.phone.trim(),associatedUserIds:[],active:true});notify('Emprendimiento registrado correctamente')}view.value='list'}
-function toggle(){if(!modal.value)return;modal.value.active=!modal.value.active;notify(modal.value.active?'Emprendimiento reactivado':'Emprendimiento desactivado');modal.value=null}
+
+
+const emit = defineEmits([
+  'navigate'
+])
+
+
+const empresas = ref([])
+
+const search = ref('')
+const filter = ref('todos')
+
+const loading = ref(false)
+const error = ref('')
+const procesandoId = ref(null)
+
+const isAdmin = computed(() =>
+  props.currentUser?.roles?.includes('ADMINISTRADOR')
+)
+
+
+// ========================================
+// CARGAR EMPRESAS
+// ========================================
+
+async function cargarEmpresas() {
+
+  loading.value = true
+  error.value = ''
+
+  try {
+
+    const response = await listarEmpresas()
+
+    console.log(
+      'Respuesta empresas:',
+      response
+    )
+
+    if (Array.isArray(response)) {
+
+      empresas.value = response
+
+    } else if (Array.isArray(response.empresas)) {
+
+      empresas.value = response.empresas
+
+    } else {
+
+      empresas.value = []
+
+    }
+
+  } catch (err) {
+
+    console.error(err)
+
+    error.value =
+      err.message ||
+      'No se pudieron cargar los emprendimientos.'
+
+  } finally {
+
+    loading.value = false
+
+  }
+}
+
+
+// ========================================
+// ID EMPRESA
+// ========================================
+
+function obtenerId(empresa) {
+
+  return (
+    empresa.id ??
+    empresa.id_empresa
+  )
+}
+
+
+// ========================================
+// ESTADO
+// ========================================
+
+function estaActiva(empresa) {
+
+  if (empresa.estado !== undefined) {
+    return empresa.estado
+  }
+
+  return empresa.active
+}
+
+
+// ========================================
+// FILTROS
+// ========================================
+
+const empresasFiltradas = computed(() => {
+
+  const texto =
+    search.value
+      .trim()
+      .toLowerCase()
+
+
+  return empresas.value.filter(empresa => {
+
+    const nombre = (
+      empresa.nombre ||
+      empresa.name ||
+      ''
+    ).toLowerCase()
+
+
+    const direccion = (
+      empresa.direccion ||
+      empresa.address ||
+      ''
+    ).toLowerCase()
+
+
+    const telefono = String(
+      empresa.telefono ||
+      empresa.phone ||
+      ''
+    ).toLowerCase()
+
+
+    const coincideBusqueda =
+      !texto ||
+      nombre.includes(texto) ||
+      direccion.includes(texto) ||
+      telefono.includes(texto)
+
+
+    const estado = estaActiva(empresa)
+
+
+    const coincideEstado =
+      filter.value === 'todos' ||
+
+      (
+        filter.value === 'activos' &&
+        estado === true
+      ) ||
+
+      (
+        filter.value === 'inactivos' &&
+        estado === false
+      )
+
+
+    return (
+      coincideBusqueda &&
+      coincideEstado
+    )
+
+  })
+})
+
+
+async function confirmarDesactivacion(empresa) {
+
+  const id = obtenerId(empresa)
+
+  const alert = await alertController.create({
+    header: 'Desactivar emprendimiento',
+    message: `¿Está seguro de desactivar "${empresa.nombre}"? La información histórica se conservará.`,
+    buttons: [
+      {
+        text: 'Cancelar',
+        role: 'cancel'
+      },
+      {
+        text: 'Desactivar',
+        role: 'destructive',
+
+        handler: async () => {
+
+          procesandoId.value = id
+
+          try {
+
+            await desactivarEmpresa(id)
+
+            await cargarEmpresas()
+
+          } catch (err) {
+
+            console.error(err)
+
+            const errorAlert =
+              await alertController.create({
+                header: 'Error',
+                message:
+                  err.message ||
+                  'No se pudo desactivar el emprendimiento.',
+                buttons: ['Aceptar']
+              })
+
+            await errorAlert.present()
+
+          } finally {
+
+            procesandoId.value = null
+          }
+        }
+      }
+    ]
+  })
+
+  await alert.present()
+}
+
+async function confirmarReactivacion(empresa) {
+
+  const id = obtenerId(empresa)
+
+  const alert = await alertController.create({
+    header: 'Reactivar emprendimiento',
+    message: `¿Desea reactivar "${empresa.nombre}"?`,
+    buttons: [
+      {
+        text: 'Cancelar',
+        role: 'cancel'
+      },
+      {
+        text: 'Reactivar',
+
+        handler: async () => {
+
+          procesandoId.value = id
+
+          try {
+
+            await reactivarEmpresa(id)
+
+            await cargarEmpresas()
+
+          } catch (err) {
+
+            console.error(err)
+
+            const errorAlert =
+              await alertController.create({
+                header: 'Error',
+                message:
+                  err.message ||
+                  'No se pudo reactivar el emprendimiento.',
+                buttons: ['Aceptar']
+              })
+
+            await errorAlert.present()
+
+          } finally {
+
+            procesandoId.value = null
+          }
+        }
+      }
+    ]
+  })
+
+  await alert.present()
+}
+
+// ========================================
+// NAVEGACIONES
+// ========================================
+
+function verEmpresa(empresa) {
+
+  emit(
+    'navigate',
+    'business-detail',
+    {
+      idEmpresa: obtenerId(empresa)
+    }
+  )
+}
+
+
+function editarEmpresa(empresa) {
+
+  emit(
+    'navigate',
+    'business-edit',
+    {
+      idEmpresa: obtenerId(empresa)
+    }
+  )
+}
+
+
+onMounted(() => {
+  cargarEmpresas()
+})
 </script>
+
+
 <template>
+
   <div class="h-full flex flex-col relative">
-    <ToastMessage :message="toast" />
-    <AppModal :open="!!modal" :title="modal?.active?'¿Desactivar emprendimiento?':'¿Reactivar emprendimiento?'" :message="modal?.active?'El emprendimiento quedará inactivo, pero se conservará su información histórica.':'El emprendimiento volverá a estar disponible.'" :confirm-label="modal?.active?'Desactivar':'Reactivar'" :danger="modal?.active" @cancel="modal=null" @confirm="toggle" />
-    <template v-if="view==='form'">
-      <AppHeader :title="editing?'Editar emprendimiento':'Nuevo emprendimiento'" show-back @back="view='list'" />
-      <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-        <BaseInput v-model="form.name" label="Nombre *" :error="errors.name" placeholder="Velas Artesanales Condori" />
-        <BaseInput v-model="form.address" label="Dirección" placeholder="Av. Montes 345" />
-        <BaseInput v-model="form.phone" label="Teléfono" :error="errors.phone" placeholder="71234567" />
-        <div class="flex gap-3"><BaseButton full variant="secondary" @click="view='list'">Cancelar</BaseButton><BaseButton full @click="save">Guardar</BaseButton></div>
+
+    <!-- HEADER -->
+
+    <AppHeader
+      title="Emprendimientos"
+      show-back
+      @back="emit('navigate', 'home')"
+    >
+
+      <template #right>
+
+        <BaseButton
+          v-if="isAdmin"
+          size="sm"
+          @click="
+            emit(
+              'navigate',
+              'business-create'
+            )
+          "
+        >
+          + Nuevo
+        </BaseButton>
+
+      </template>
+
+    </AppHeader>
+
+
+    <div class="flex-1 overflow-y-auto p-4">
+
+
+      <!-- BUSCADOR -->
+
+      <input
+        v-model="search"
+        placeholder="Buscar emprendimiento..."
+        class="
+          w-full
+          h-10
+          rounded-xl
+          border
+          border-[#D8CFC4]
+          bg-white
+          px-4
+          text-sm
+          mb-3
+        "
+      />
+
+
+      <!-- FILTROS -->
+
+      <div class="flex gap-2 mb-4">
+
+        <button
+          v-for="f in [
+            ['todos', 'Todos'],
+            ['activos', 'Activos'],
+            ['inactivos', 'Inactivos']
+          ]"
+          :key="f[0]"
+          @click="filter = f[0]"
+          class="
+            px-3
+            py-1.5
+            rounded-full
+            text-xs
+            font-semibold
+          "
+          :class="
+            filter === f[0]
+              ? 'bg-[#2A6049] text-white'
+              : 'bg-white border border-[#D8CFC4]'
+          "
+        >
+          {{ f[1] }}
+        </button>
+
       </div>
-    </template>
-    <template v-else>
-      <AppHeader
-        title="Emprendimientos"
-        show-back
-        @back="emit('navigate', 'home')"
+
+
+      <!-- LOADING -->
+
+      <div
+        v-if="loading"
+        class="
+          text-center
+          text-sm
+          text-[#7A6558]
+          py-12
+        "
       >
-      <template #right><BaseButton v-if="isAdmin" size="sm" @click="openCreate">+ Nuevo</BaseButton></template></AppHeader>
-      <div class="flex-1 overflow-y-auto p-4">
-        <input v-model="search" placeholder="Buscar emprendimiento..." class="w-full h-10 rounded-xl border border-[#D8CFC4] bg-white px-4 text-sm mb-4" />
-        <div v-if="visibleBusinesses.length===0" class="text-center text-sm text-[#7A6558] py-12">No existen emprendimientos para mostrar.</div>
-        <div v-for="b in visibleBusinesses" :key="b.id" class="bg-white border border-[#D8CFC4] rounded-2xl p-4 mb-3">
-          <div class="flex justify-between gap-3"><div><p class="font-semibold">{{b.name}}</p><p class="text-xs text-[#7A6558]">📍 {{b.address||'Sin dirección'}}</p><p class="text-xs text-[#7A6558]">☎ {{b.phone||'Sin teléfono'}}</p></div><span class="text-[10px] px-2 py-1 rounded-full h-fit" :class="b.active?'bg-[#E6F5EF] text-[#1E6B47]':'bg-[#EEE] text-[#666]'">{{b.active?'Activo':'Inactivo'}}</span></div>
-          <p class="text-xs text-[#7A6558] mt-2">Personas asociadas: {{b.associatedUserIds.length}}</p>
-          <div v-if="isAdmin" class="flex gap-2 mt-3"><BaseButton size="sm" variant="outline" @click="openEdit(b)">Editar</BaseButton><BaseButton size="sm" :variant="b.active?'danger':'secondary'" @click="modal=b">{{b.active?'Desactivar':'Reactivar'}}</BaseButton></div>
-        </div>
+        Cargando emprendimientos...
       </div>
-    </template>
+
+
+      <!-- ERROR -->
+
+      <div
+        v-else-if="error"
+        class="
+          bg-red-50
+          border
+          border-red-200
+          rounded-xl
+          p-4
+          text-sm
+          text-red-700
+        "
+      >
+
+        <p>
+          {{ error }}
+        </p>
+
+        <BaseButton
+          size="sm"
+          class="mt-3"
+          @click="cargarEmpresas"
+        >
+          Reintentar
+        </BaseButton>
+
+      </div>
+
+
+      <!-- SIN RESULTADOS -->
+
+      <div
+        v-else-if="empresasFiltradas.length === 0"
+        class="
+          text-center
+          text-sm
+          text-[#7A6558]
+          py-12
+        "
+      >
+        No existen emprendimientos para mostrar.
+      </div>
+
+
+      <!-- LISTADO -->
+
+      <div
+        v-else
+        v-for="empresa in empresasFiltradas"
+        :key="obtenerId(empresa)"
+        class="
+          bg-white
+          border
+          border-[#D8CFC4]
+          rounded-2xl
+          p-4
+          mb-3
+        "
+      >
+
+        <div class="flex justify-between gap-3">
+
+          <div class="flex-1">
+
+            <!-- NOMBRE -->
+
+            <p class="font-semibold">
+
+              {{
+                empresa.nombre ||
+                empresa.name
+              }}
+
+            </p>
+
+
+            <!-- DIRECCIÓN -->
+
+            <p
+              class="
+                text-xs
+                text-[#7A6558]
+                mt-1
+              "
+            >
+
+              📍
+              {{
+                empresa.direccion ||
+                empresa.address ||
+                'Sin dirección'
+              }}
+
+            </p>
+
+
+            <!-- TELÉFONO -->
+
+            <p
+              class="
+                text-xs
+                text-[#7A6558]
+                mt-1
+              "
+            >
+
+              ☎
+              {{
+                empresa.telefono ||
+                empresa.phone ||
+                'Sin teléfono'
+              }}
+
+            </p>
+
+          </div>
+
+
+          <!-- ESTADO -->
+
+          <span
+            class="
+              text-[10px]
+              px-2
+              py-1
+              rounded-full
+              h-fit
+            "
+            :class="
+              estaActiva(empresa)
+                ? 'bg-[#E6F5EF] text-[#1E6B47]'
+                : 'bg-[#EEE] text-[#666]'
+            "
+          >
+
+            {{
+              estaActiva(empresa)
+                ? 'Activo'
+                : 'Inactivo'
+            }}
+
+          </span>
+
+        </div>
+
+
+        <!-- PERSONAS ASOCIADAS -->
+
+        <p
+          v-if="
+            empresa.cantidad_personas !== undefined
+          "
+          class="
+            text-xs
+            text-[#7A6558]
+            mt-2
+          "
+        >
+          Personas asociadas:
+          {{ empresa.cantidad_personas }}
+        </p>
+
+
+        <!-- ACCIONES -->
+
+        <div
+          v-if="isAdmin"
+          class="flex gap-2 mt-3"
+        >
+
+          <BaseButton
+            size="sm"
+            variant="outline"
+            @click="verEmpresa(empresa)"
+          >
+            Ver
+          </BaseButton>
+
+
+          <BaseButton
+            size="sm"
+            variant="outline"
+            @click="editarEmpresa(empresa)"
+          >
+            Editar
+          </BaseButton>
+
+
+          <BaseButton
+            v-if="estaActiva(empresa)"
+            size="sm"
+            variant="danger"
+            :disabled="
+              procesandoId === obtenerId(empresa)
+            "
+            @click="
+              confirmarDesactivacion(empresa)
+            "
+          >
+            {{
+              procesandoId === obtenerId(empresa)
+                ? 'Procesando...'
+                : 'Desactivar'
+            }}
+          </BaseButton>
+
+
+          <BaseButton
+            v-else
+            size="sm"
+            variant="outline"
+            class="
+              !bg-[#2A6049]
+              !text-white
+              !border-[#2A6049]
+              hover:!bg-[#214D3B]
+              disabled:opacity-50
+            "
+            :disabled="
+              procesandoId === obtenerId(empresa)
+            "
+            @click="
+              confirmarReactivacion(empresa)
+            "
+          >
+            {{
+              procesandoId === obtenerId(empresa)
+                ? 'Procesando...'
+                : 'Reactivar'
+            }}
+          </BaseButton>
+
+        </div>
+
+      </div>
+
+    </div>
+
   </div>
+
 </template>

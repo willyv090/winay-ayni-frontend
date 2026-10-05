@@ -93,48 +93,6 @@ export const modules = [
     section: 'Operación'
   },
 
-
-  // ===================================================
-  // EMPRENDEDOR
-  // ===================================================
-  //
-  // Estas dos pantallas son diferentes a las del Admin.
-  //
-  // ADMIN:
-  // businesses-list = gestionar todos los emprendimientos
-  // products-list   = gestionar todos los productos
-  //
-  // EMPRENDEDOR:
-  // my-businesses   = ver solamente los asociados
-  // my-inventory    = ver solamente su inventario
-  //
-  // Cuando creemos esas pantallas puedes descomentar
-  // estos dos módulos.
-  // ===================================================
-
-  /*
-  {
-    id: 'mis-emprendimientos',
-    title: 'Mis emprendimientos',
-    description: 'Consultar emprendimientos asociados',
-    icon: '🏠',
-    screen: 'my-businesses',
-    roles: ['EMPRENDEDOR'],
-    section: 'Mi información'
-  },
-
-  {
-    id: 'mi-inventario',
-    title: 'Mi inventario',
-    description: 'Consultar mis productos e inventario',
-    icon: '📦',
-    screen: 'my-inventory',
-    roles: ['EMPRENDEDOR'],
-    section: 'Mi información'
-  },
-  */
-
-
   // ===================================================
   // MÓDULOS COMPARTIDOS
   // ===================================================
@@ -209,6 +167,15 @@ export const screenPermissions = {
   ],
 
   'businesses-list': [
+    'ADMINISTRADOR'
+  ],
+  'business-detail': [
+    'ADMINISTRADOR'
+  ],
+  'business-create': [
+    'ADMINISTRADOR'
+  ],
+  'business-edit': [
     'ADMINISTRADOR'
   ],
 

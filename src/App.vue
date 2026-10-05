@@ -13,6 +13,9 @@ import UserDetail from './screens/UserDetail.vue'
 import UserCreate from './screens/UserCreate.vue'
 import UserEdit from './screens/UserEdit.vue'
 import Businesses from './screens/Businesses.vue'
+import BusinessDetail from './screens/BusinessDetail.vue'
+import BusinessCreate from './screens/BusinessCreate.vue'
+import BusinessEdit from './screens/BusinessEdit.vue'
 import Products from './screens/Products.vue'
 import Sessions from './screens/Sessions.vue'
 import RegisterSale from './screens/RegisterSale.vue'
@@ -161,7 +164,10 @@ const showNav=computed(()=>currentUser.value && ['admin-home','cashier-home','en
           :id-usuario="params.idUsuario"
           @navigate="navigate"
         />
-        <Businesses v-else-if="screen==='businesses-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
+        <Businesses v-else-if="screen==='businesses-list'" :current-user="currentUser" @navigate="navigate" />
+        <BusinessDetail v-else-if="screen==='business-detail'" :id-empresa="params.idEmpresa" @navigate="navigate" />
+        <BusinessCreate v-else-if="screen==='business-create'" @navigate="navigate" />
+        <BusinessEdit v-else-if="screen==='business-edit'" :id-empresa="params.idEmpresa" @navigate="navigate" />
         <Products v-else-if="screen==='products-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
         <Sessions v-else-if="screen==='sessions-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
         <RegisterSale v-else-if="screen==='register-sale'" :store="store" :current-user="currentUser" @navigate="navigate" />
