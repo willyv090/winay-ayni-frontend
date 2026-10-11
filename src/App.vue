@@ -20,6 +20,7 @@ import Products from './screens/Products.vue'
 import Sessions from './screens/Sessions.vue'
 import SessionDetail from './screens/SessionDetail.vue'
 import SessionEdit from './screens/SessionEdit.vue'
+import SessionCreate from './screens/SessionCreate.vue'
 import RegisterSale from './screens/RegisterSale.vue'
 import SalesList from './screens/SalesList.vue'
 import SaleDetail from './screens/SaleDetail.vue'
@@ -174,6 +175,7 @@ const showNav=computed(()=>currentUser.value && ['admin-home','cashier-home','en
         <Sessions v-else-if="screen==='sessions-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
         <SessionDetail v-else-if="screen==='session-detail'" :id-jornada="params.idJornada" @navigate="navigate" />
         <SessionEdit v-else-if="screen==='session-edit'" :id-jornada="params.idJornada" @navigate="navigate" />
+        <SessionCreate v-else-if="screen==='session-create'" @navigate="navigate" />
         <RegisterSale v-else-if="screen==='register-sale'" :store="store" :current-user="currentUser" @navigate="navigate" />
         <SalesList v-else-if="screen==='sales-list'" :store="store" :current-user="currentUser" @navigate="navigate" />
         <SaleDetail v-else-if="screen==='sale-detail'" :store="store" :current-user="currentUser" :sale-id="params.saleId" @navigate="navigate" />

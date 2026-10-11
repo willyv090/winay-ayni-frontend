@@ -195,6 +195,10 @@ export const screenPermissions = {
     'ADMINISTRADOR'
   ],
 
+  'session-create': [
+    'ADMINISTRADOR'
+  ],
+
   'session-results': [
     'ADMINISTRADOR'
   ],

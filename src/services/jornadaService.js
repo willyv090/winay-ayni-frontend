@@ -25,3 +25,20 @@ export async function editarJornada(id, datos) {
     body: JSON.stringify(datos)
   })
 }
+
+
+export async function crearJornada(datos) {
+  return await apiRequest('/api/jornadas', {
+    method: 'POST',
+    body: JSON.stringify(datos)
+  })
+}
+
+
+export async function finalizarJornada(id) {
+  return await apiRequest(`/api/jornadas/${id}/cerrar`, { method: 'PUT' })
+}
+
+export async function reactivarJornada(id) {
+  return await apiRequest(`/api/jornadas/${id}/reactivar`, { method: 'PUT' })
+}

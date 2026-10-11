@@ -6,7 +6,7 @@
         <div class="w-28 h-6 bg-[#1C1108] rounded-full absolute left-1/2 -translate-x-1/2 top-0"></div>
         <span class="text-white text-xs">●●●</span>
       </div>
-      <div class="absolute inset-0 rounded-[44px] overflow-hidden bg-[#F5F0E8]">
+      <div id="phone-screen" class="absolute inset-0 rounded-[44px] overflow-hidden bg-[#F5F0E8]">
         <div class="h-full flex flex-col pt-12"><slot /></div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 
 import AppHeader from '../components/AppHeader.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
+import JornadaEstadoButton from '../components/JornadaEstadoButton.vue'
 
 import {
   obtenerJornada,
@@ -537,6 +538,7 @@ onMounted(() => {
         <div
           class="
             flex
+            flex-wrap
             gap-2
           "
         >
@@ -577,6 +579,8 @@ onMounted(() => {
           >
             Productos
           </BaseButton>
+
+          <JornadaEstadoButton :jornada="jornada" @updated="cargarJornada" />
 
         </div>
 
