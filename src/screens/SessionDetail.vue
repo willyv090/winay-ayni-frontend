@@ -3,11 +3,14 @@ import { onMounted, ref } from 'vue'
 
 import AppHeader from '../components/AppHeader.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
+import RetirarProductoButton from '../components/RetirarProductoButton.vue'
+import RetirarCajeroButton from '../components/RetirarCajeroButton.vue'
 import JornadaEstadoButton from '../components/JornadaEstadoButton.vue'
 
 import {
   obtenerJornada,
-  obtenerCajerosJornada
+  obtenerCajerosJornada,
+  obtenerProductosJornada
 } from '../services/jornadaService.js'
 
 
@@ -26,6 +29,7 @@ const emit = defineEmits([
 
 const jornada = ref(null)
 const cajeros = ref([])
+const productos = ref([])
 const loading = ref(false)
 const error = ref('')
 
@@ -63,7 +67,8 @@ async function cargarJornada() {
 
     const [
       responseJornada,
-      responseCajeros
+      responseCajeros,
+      responseProductos
     ] = await Promise.all([
       obtenerJornada(
         props.idJornada
@@ -71,7 +76,8 @@ async function cargarJornada() {
 
       obtenerCajerosJornada(
         props.idJornada
-      )
+      ),
+      obtenerProductosJornada(props.idJornada)
     ])
 
 
@@ -81,6 +87,8 @@ async function cargarJornada() {
 
     cajeros.value =
       responseCajeros.cajeros || []
+
+    productos.value = responseProductos.productos || []
 
 
     console.log(
@@ -371,6 +379,16 @@ onMounted(() => {
 
         <!-- CAJEROS ASIGNADOS -->
 
+        <BaseButton
+          v-if="jornada.estado"
+          full
+          variant="outline"
+          class="mb-4"
+          @click="emit('navigate', 'session-cashiers', { idJornada: jornada.id })"
+        >
+          Asignar cajeros
+        </BaseButton>
+
         <div class="mb-6">
 
         <div
@@ -526,12 +544,49 @@ onMounted(() => {
 
             </div>
 
+            <RetirarCajeroButton
+              v-if="jornada.estado && cajero.estado"
+              class="mt-3"
+              :jornada="jornada"
+              :cajero="cajero"
+              @updated="cargarJornada"
+            />
+
             </div>
 
         </div>
 
         </div>
 
+
+        <section class="mb-6">
+          <h2 class="text-sm font-semibold mb-3">Productos de la jornada ({{ productos.filter(item => item.estado).length }} activos)</h2>
+          <BaseButton v-if="jornada.estado" full variant="outline" class="mb-3"
+            @click="emit('navigate', 'session-products', { idJornada: jornada.id })">
+            Asignar productos
+          </BaseButton>
+          <p v-if="!productos.length" class="bg-[#F7F4F0] rounded-xl p-3 text-sm text-[#7A6558]">No existen productos asignados a esta jornada.</p>
+          <div v-else class="space-y-2">
+            <div v-for="item in productos" :key="item.id_jornada_producto" class="border border-[#D8CFC4] rounded-xl p-3 bg-[#FAF9F7]">
+              <div class="flex justify-between gap-3">
+                <p class="text-sm font-semibold break-words min-w-0">{{ item.producto.nombre }}</p>
+                <span class="text-xs rounded-full px-2 py-1 h-fit shrink-0"
+                  :class="item.estado ? 'bg-[#E6F5EF] text-[#1E6B47]' : 'bg-[#EEE] text-[#666]'">
+                  {{ item.estado ? 'Activo' : 'Inactivo' }}
+                </span>
+              </div>
+              <p class="text-xs text-[#7A6558] mt-2">Stock actual: {{ item.producto.cantidad }} · Bs {{ Number(item.producto.precio_final).toFixed(2) }}</p>
+              <p class="text-xs text-[#7A6558] mt-1">Asignado: {{ formatearFecha(item.fecha) }}</p>
+              <RetirarProductoButton
+                v-if="jornada.estado && item.estado"
+                class="mt-3"
+                :jornada="jornada"
+                :producto="item"
+                @updated="cargarJornada"
+              />
+            </div>
+          </div>
+        </section>
 
         <!-- ACCIONES -->
 
@@ -562,23 +617,7 @@ onMounted(() => {
           </BaseButton>
 
 
-          <BaseButton
-            v-if="jornada.estado"
-            variant="outline"
-            class="flex-1"
-            @click="
-              emit(
-                'navigate',
-                'session-products',
-                {
-                  idJornada:
-                    jornada.id
-                }
-              )
-            "
-          >
-            Productos
-          </BaseButton>
+
 
           <JornadaEstadoButton :jornada="jornada" @updated="cargarJornada" />
 
