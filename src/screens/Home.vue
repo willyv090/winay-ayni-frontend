@@ -2,10 +2,11 @@
 import { computed } from 'vue'
 
 import AppHeader from '../components/AppHeader.vue'
-import { modules } from '../config/navigation.js'
+import { obtenerModulos, rolesDisponibles, roleLabels } from '../config/navigation.js'
 
 
 const props = defineProps({
+  activeRole: { type: String, default: '' },
   user: {
     type: Object,
     required: true
@@ -15,21 +16,13 @@ const props = defineProps({
 
 const emit = defineEmits([
   'navigate',
-  'logout'
+  'logout',
+  'change-role'
 ])
 
 
-const modulosVisibles = computed(() => {
-
-  const rolesUsuario = props.user.roles || []
-
-  return modules.filter(modulo =>
-    modulo.roles.some(rol =>
-      rolesUsuario.includes(rol)
-    )
-  )
-})
-
+const roles = computed(() => rolesDisponibles(props.user.roles))
+const modulosVisibles = computed(() => obtenerModulos(props.user.roles, props.activeRole))
 
 const secciones = computed(() => {
 
@@ -84,25 +77,14 @@ function abrirModulo(modulo) {
         </h2>
 
 
-        <!-- ROLES -->
-
-        <div class="flex flex-wrap gap-2 mt-3">
-
-          <span
-            v-for="rol in user.roles"
-            :key="rol"
-            class="
-              bg-white/20
-              px-2
-              py-1
-              rounded-full
-              text-xs
-            "
-          >
-            {{ rol }}
-          </span>
-
-        </div>
+        <label v-if="roles.length > 1" class="block mt-4">
+          <span class="block text-sm mb-1">Trabajar como</span>
+          <select :value="activeRole" @change="emit('change-role', $event.target.value)"
+            class="w-full min-h-12 rounded-xl bg-white text-[#2A6049] px-3 font-semibold">
+            <option v-for="rol in roles" :key="rol" :value="rol">{{ roleLabels[rol] }}</option>
+          </select>
+        </label>
+        <p v-else class="text-sm mt-3">{{ roleLabels[activeRole] || 'Sin rol habilitado' }}</p>
 
       </div>
 
@@ -152,6 +134,7 @@ function abrirModulo(modulo) {
             "
           >
 
+            <span v-if="modulo.pendiente" class="block text-[10px] text-[#7A6558] mb-2">Pendiente de conexión</span>
             <div class="text-3xl mb-3">
               {{ modulo.icon }}
             </div>

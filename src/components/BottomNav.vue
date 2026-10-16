@@ -7,6 +7,7 @@ import {
 
 
 const props = defineProps({
+  activeRole: { type: String, default: '' },
   user: {
     type: Object,
     required: true
@@ -26,7 +27,7 @@ const emit = defineEmits([
 
 const tabs = computed(() => {
   return obtenerBottomTabs(
-    props.user?.roles || []
+    props.user?.roles || [], props.activeRole
   )
 })
 </script>

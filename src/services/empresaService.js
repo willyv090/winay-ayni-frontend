@@ -39,3 +39,10 @@ export async function reactivarEmpresa(id) {
     method: 'PUT'
   })
 }
+export async function listarMisEmpresas() {
+  return await apiRequest('/api/empresas/mias', { method: 'GET' })
+}
+
+export async function obtenerMiEmpresa(idEmpresa) {
+  return await apiRequest(`/api/empresas/mias/${idEmpresa}`, { method: 'GET' })
+}
