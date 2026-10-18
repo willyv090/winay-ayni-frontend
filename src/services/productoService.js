@@ -30,3 +30,9 @@ export async function editarProducto(idProducto, datos) {
     body: JSON.stringify(datos)
   })
 }
+
+export async function ajustarStock(idProducto, ajuste) {
+  return await apiRequest(`/api/productos/${idProducto}/stock`, {
+    method: 'PUT', body: JSON.stringify({ ajuste })
+  })
+}

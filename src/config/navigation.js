@@ -15,6 +15,7 @@ export function elegirRol(roles, preferido = '') {
 }
 
 export const modules = [
+  { id: 'venta-independiente', title: 'Registrar venta', description: 'Vender productos de mi empresa', icon: '🛒', screen: 'entrepreneur-sale', roles: ['EMPRENDEDOR'], section: 'Mi emprendimiento' },
   { id: 'usuarios', title: 'Usuarios', description: 'Gestionar usuarios y roles', icon: '👥', screen: 'users-list', roles: ['ADMINISTRADOR'], section: 'Administración' },
   { id: 'empresas', title: 'Empresas', description: 'Gestionar empresas y sus integrantes', icon: '🏪', screen: 'businesses-list', roles: ['ADMINISTRADOR'], section: 'Administración' },
   { id: 'jornadas', title: 'Jornadas', description: 'Organizar jornadas, cajeros y productos', icon: '📅', screen: 'sessions-list', roles: ['ADMINISTRADOR'], section: 'Administración' },
@@ -29,10 +30,23 @@ export const modules = [
 
 export function obtenerModulos(roles, rolActivo) {
   if (!rolesDisponibles(roles).includes(rolActivo)) return []
-  return modules.filter(modulo => modulo.roles.includes(rolActivo))
+  return modules.filter(modulo => modulo.roles.includes(rolActivo)).map(modulo => {
+    if (rolActivo === 'EMPRENDEDOR' && ['sales-list', 'ai-query'].includes(modulo.screen)) {
+      return {
+        ...modulo,
+        title: modulo.screen === 'sales-list' ? 'Ventas' : 'Consultas',
+        description: 'Consultar métricas y productos más vendidos',
+        pendiente: false
+      }
+    }
+    if (rolActivo === 'CAJERO' && ['cashier-session', 'register-sale', 'sales-list'].includes(modulo.screen)) return { ...modulo, pendiente: false }
+    return modulo
+  })
 }
 
 export const screenPermissions = {
+  'my-business-metrics': ['EMPRENDEDOR'],
+  'entrepreneur-sale': ['EMPRENDEDOR'],
 
   // ===================================================
   // GENERAL
@@ -177,13 +191,13 @@ export function obtenerBottomTabs(roles = [], rolActivo = '') {
   const inicio = { screen: 'home', icon: '⌂', label: 'Inicio' }
   const opciones = {
     ADMINISTRADOR: ['users-list', 'sessions-list', 'sales-list', 'ai-query'],
-    EMPRENDEDOR: ['my-businesses', 'sales-list', 'ai-query'],
+    EMPRENDEDOR: ['my-businesses', 'entrepreneur-sale', 'sales-list', 'ai-query'],
     CAJERO: ['cashier-session', 'register-sale', 'sales-list', 'ai-query']
   }
   if (!rolesDisponibles(roles).includes(rolActivo)) return [inicio]
   return [inicio, ...(opciones[rolActivo] || []).map(screen => {
     const modulo = modules.find(item => item.screen === screen)
-    const label = { 'users-list': 'Usuarios', 'sessions-list': 'Jornadas', 'my-businesses': 'Empresas', 'my-inventory': 'Inventario', 'cashier-session': 'Jornada', 'register-sale': 'Vender', 'sales-list': 'Ventas', 'ai-query': 'Consulta' }[screen]
+    const label = { 'entrepreneur-sale': 'Vender', 'users-list': 'Usuarios', 'sessions-list': 'Jornadas', 'my-businesses': 'Empresas', 'my-inventory': 'Inventario', 'cashier-session': 'Jornada', 'register-sale': 'Vender', 'sales-list': 'Ventas', 'ai-query': 'Consulta' }[screen]
     return { screen, icon: modulo.icon, label }
   })]
 }

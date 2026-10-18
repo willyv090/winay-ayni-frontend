@@ -32,6 +32,21 @@ const productosVisibles = computed(() => {
   )
 })
 
+const disponiblesVisibles = computed(() => productosVisibles.value
+  .filter(p => !idsAsignados.value.has(Number(p.id))))
+const todosVisiblesSeleccionados = computed(() => disponiblesVisibles.value.length > 0 &&
+  disponiblesVisibles.value.every(p => seleccionados.value.includes(Number(p.id))))
+function seleccionarVisibles(marcar) {
+  if (guardando.value || cargandoProductos.value) return
+  const visibles = new Set(disponiblesVisibles.value.map(p => Number(p.id)))
+  seleccionados.value = marcar
+    ? [...new Set([...seleccionados.value, ...visibles])]
+    : seleccionados.value.filter(id => !visibles.has(id))
+}
+function limpiarSeleccion() {
+  if (!guardando.value) seleccionados.value = []
+}
+
 function volver() {
   if (!guardando.value) emit('navigate', 'session-detail', { idJornada: props.idJornada })
 }
@@ -135,7 +150,7 @@ onMounted(cargarDatos)
       <form v-else-if="jornada" @submit.prevent="guardar">
         <div class="bg-[#2A6049] text-white rounded-2xl p-4 mb-4">
           <p class="font-semibold break-words">{{ jornada.nombre }}</p>
-          <p class="text-sm text-white/80 mt-2">Seleccione una empresa y los productos que participarán en esta jornada.</p>
+          <p class="text-sm text-white/80 mt-2">Seleccione una empresa, marque varios productos y asígnelos juntos con un solo botón.</p>
         </div>
         <fieldset :disabled="guardando" class="min-w-0">
           <label class="block mb-4">
@@ -158,6 +173,21 @@ onMounted(cargarDatos)
           </label>
           <p v-if="productos.length === 0" class="text-sm text-[#7A6558] py-6">No hay productos activos disponibles.</p>
           <p v-else-if="productosVisibles.length === 0" class="text-sm text-[#7A6558] py-6">No se encontraron productos con esa búsqueda.</p>
+          <div v-if="productos.length" class="bg-[#E6F5EF] rounded-xl p-3 mb-3">
+            <label class="flex items-center gap-3 min-h-12 text-sm font-semibold">
+              <input type="checkbox" :checked="todosVisiblesSeleccionados"
+                :indeterminate="!todosVisiblesSeleccionados && disponiblesVisibles.some(p => seleccionados.includes(Number(p.id)))"
+                :disabled="!disponiblesVisibles.length"
+                @change="seleccionarVisibles($event.target.checked)"
+                class="w-5 h-5 shrink-0 accent-[#2A6049]" />
+              Seleccionar todos los visibles ({{ disponiblesVisibles.length }})
+            </label>
+            <p class="text-xs text-[#7A6558] mt-1">La búsqueda no borra los productos que ya marcaste. Al cambiar de empresa se limpia la selección.</p>
+            <div class="flex items-center justify-between gap-2 mt-2">
+              <p role="status" class="text-sm font-semibold">{{ seleccionados.length }} seleccionados</p>
+              <BaseButton type="button" size="sm" variant="ghost" :disabled="!seleccionados.length" @click="limpiarSeleccion">Limpiar selección</BaseButton>
+            </div>
+          </div>
           <div class="space-y-3">
             <label v-for="producto in productosVisibles" :key="producto.id" class="flex items-center gap-3 bg-white border border-[#D8CFC4] rounded-2xl p-4 min-h-16">
               <input v-if="idsAsignados.has(Number(producto.id))" type="checkbox" checked disabled class="w-5 h-5 shrink-0 accent-[#2A6049]" />
@@ -173,7 +203,7 @@ onMounted(cargarDatos)
           </div>
           <p v-if="errorGuardado" role="alert" class="bg-red-50 text-red-700 rounded-xl p-3 text-sm mt-4">{{ errorGuardado }}</p>
           <div class="flex flex-col gap-3 mt-5 pb-4">
-            <BaseButton type="submit" full :loading="guardando" :disabled="!seleccionados.length || cargandoProductos || !!errorProductos">{{ guardando ? 'Asignando...' : 'Asignar productos' }}</BaseButton>
+            <BaseButton type="submit" full :loading="guardando" :disabled="!seleccionados.length || cargandoProductos || !!errorProductos">{{ guardando ? 'Asignando...' : 'Asignar ' + seleccionados.length + (seleccionados.length === 1 ? ' producto' : ' productos') }}</BaseButton>
             <BaseButton type="button" full variant="secondary" :disabled="guardando" @click="volver">Cancelar</BaseButton>
           </div>
         </fieldset>

@@ -26,11 +26,13 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       data.mensaje ||
       data.error ||
       'Ocurrió un error al comunicarse con el servidor.'
     )
+    error.status = response.status
+    throw error
   }
 
   return data

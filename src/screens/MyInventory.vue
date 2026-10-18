@@ -2,12 +2,13 @@
 import { computed, ref, watch } from 'vue'
 import AppHeader from '../components/AppHeader.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
+import StockAdjustment from '../components/StockAdjustment.vue'
 import ProductoEstadoButton from '../components/ProductoEstadoButton.vue'
 import { obtenerMiEmpresa } from '../services/empresaService.js'
 import { listarMiInventario, obtenerMiProducto, crearProducto, editarProducto } from '../services/productoService.js'
 
 const props = defineProps({ idEmpresa: { type: [Number, String], required: true } })
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['navigate', 'busy'])
 const empresa = ref(null)
 const productos = ref([])
 const producto = ref(null)
@@ -181,8 +182,11 @@ watch(() => props.idEmpresa, () => {
             <div><dt class="text-[#7A6558]">Salida</dt><dd>{{ fecha(producto.fecha_salida) }}</dd></div>
             <div class="col-span-2"><dt class="text-[#7A6558]">Notas</dt><dd class="whitespace-pre-wrap break-words">{{ producto.notas || 'Sin notas' }}</dd></div>
           </dl>
-          <BaseButton v-if="empresa.estado && producto.estado" full variant="outline" class="mt-5" @click="editar">Editar producto</BaseButton>
-          <ProductoEstadoButton :empresa="empresa" :producto="producto" class="mt-5" @updated="actualizado" />
+          <BaseButton v-if="empresa.estado && producto.estado" full variant="outline" class="mt-5"  :disabled="guardando" @click="editar">Editar producto</BaseButton>
+          <StockAdjustment v-if="empresa.estado && producto.estado" :producto="producto"
+            @busy="guardando = $event; emit('busy', $event)"
+            @updated="aviso = 'Consulta el stock actualizado.'; cargar(idDetalle)" />
+          <ProductoEstadoButton v-if="!guardando" :empresa="empresa" :producto="producto" class="mt-5" @updated="actualizado" />
         </section>
         <form v-else-if="vista === 'crear' || vista === 'editar'" @submit.prevent="guardar">
           <fieldset :disabled="guardando" class="space-y-4 min-w-0">

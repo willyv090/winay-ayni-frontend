@@ -50,6 +50,7 @@ watch(() => props.idEmpresa, cargar, { immediate: true })
           </dl>
           <p v-if="!empresa.estado" class="text-sm text-[#7A6558] mt-4">Esta empresa está inactiva. Consulta con el administrador para reactivarla.</p>
         </section>
+        <BaseButton v-if="empresa.estado" full class="mt-4" @click="emit('navigate', 'entrepreneur-sale', { idEmpresa: empresa.id })">Registrar venta</BaseButton>
         <section class="bg-white border border-[#D8CFC4] rounded-2xl p-4 mt-4">
           <h2 class="font-semibold">Inventario</h2>
           <p class="text-sm text-[#7A6558] mt-2">Aquí gestionarás los productos y las existencias de {{ empresa.nombre }}.</p>
@@ -58,7 +59,8 @@ watch(() => props.idEmpresa, cargar, { immediate: true })
         <section class="bg-white border border-[#D8CFC4] rounded-2xl p-4 mt-4">
           <h2 class="font-semibold">Métricas de ventas</h2>
           <p class="text-sm text-[#7A6558] mt-2">Aquí consultarás las ventas correspondientes a {{ empresa.nombre }}.</p>
-          <p class="text-xs text-[#7A6558] mt-3">Pendiente de conexión</p>
+          <BaseButton full class="mt-4" @click="emit('navigate', 'my-business-metrics', { idEmpresa: empresa.id })">Ver métricas</BaseButton>
+          <p class="text-xs text-[#7A6558] mt-3">Consulta por separado las ventas independientes y las ventas de feria.</p>
         </section>
       </template>
     </div>

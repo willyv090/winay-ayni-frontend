@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { obtenerUsuario } from './services/usuarioService.js'
 import { alertController } from '@ionic/vue'
 import PhoneFrame from './components/PhoneFrame.vue'
 import BottomNav from './components/BottomNav.vue'
@@ -19,7 +20,12 @@ import SessionEdit from './screens/SessionEdit.vue'
 import SessionCreate from './screens/SessionCreate.vue'
 import SessionCashiers from './screens/SessionCashiers.vue'
 import SessionProducts from './screens/SessionProducts.vue'
+import CashierSale from './screens/CashierSale.vue'
+import CashierHistory from './screens/CashierHistory.vue'
+import EntrepreneurSale from './screens/EntrepreneurSale.vue'
 import MyInventory from './screens/MyInventory.vue'
+import EntrepreneurMetrics from './screens/EntrepreneurMetrics.vue'
+import MyBusinessMetrics from './screens/MyBusinessMetrics.vue'
 import MyBusinesses from './screens/MyBusinesses.vue'
 import MyBusinessDetail from './screens/MyBusinessDetail.vue'
 import Home from './screens/Home.vue'
@@ -27,6 +33,38 @@ import PendingModule from './screens/PendingModule.vue'
 import {
   puedeAcceder, elegirRol, rolesDisponibles, roleLabels, modules
 } from './config/navigation.js'
+
+const ventaEnProceso = ref(false)
+const actualizandoRoles = ref(false)
+const errorRoles = ref('')
+let consultaRoles = 0
+async function actualizarRoles() {
+  if (!currentUser.value || actualizandoRoles.value || screen.value !== 'home') return
+  const usuarioActual = currentUser.value
+  const consulta = ++consultaRoles
+  actualizandoRoles.value = true
+  errorRoles.value = ''
+  try {
+    const respuesta = await obtenerUsuario(usuarioActual.id)
+    if (consulta !== consultaRoles || currentUser.value !== usuarioActual) return
+    const persona = respuesta.persona
+    if (!persona || Number(persona.id) !== Number(usuarioActual.id) || !Array.isArray(persona.roles)) {
+      throw new Error('No se pudieron verificar tus roles.')
+    }
+    if (!persona.estado) { logout(); return }
+    currentUser.value = { ...usuarioActual, name: persona.nombre, username: persona.usuario, roles: persona.roles }
+    localStorage.setItem('usuario', JSON.stringify(currentUser.value))
+    activeRole.value = elegirRol(persona.roles, activeRole.value)
+    sessionStorage.setItem('rolActivo', activeRole.value)
+    if (!puedeAcceder(screen.value, persona.roles, activeRole.value)) screen.value = 'home'
+  } catch (err) {
+    if (consulta !== consultaRoles || currentUser.value !== usuarioActual) return
+    if (err.status === 401 || err.status === 404) { logout(); return }
+    errorRoles.value = err.message || 'No se pudieron actualizar tus roles.'
+  } finally {
+    if (consulta === consultaRoles) actualizandoRoles.value = false
+  }
+}
 
 const store=reactive(structuredClone(initialStore))
 function leerUsuario() {
@@ -81,6 +119,9 @@ function login(user) {
   )
 }
 function logout() {
+  consultaRoles++
+  actualizandoRoles.value = false
+  errorRoles.value = ''
   localStorage.removeItem('token')
   localStorage.removeItem('usuario')
 
@@ -99,6 +140,7 @@ async function navigate(
   next,
   nextParams = {}
 ) {
+  if (ventaEnProceso.value) return
 
   // ==========================
   // VALIDAR PERMISOS
@@ -169,14 +211,22 @@ async function navigate(
           v-if="screen === 'home'"
           :user="currentUser"
           :active-role="activeRole"
+          :actualizando-roles="actualizandoRoles"
+          :error-roles="errorRoles"
+          @refresh-roles="actualizarRoles"
           @change-role="cambiarRol"
           @navigate="navigate"
           @logout="logout"
         />
+        <EntrepreneurMetrics v-else-if="activeRole === 'EMPRENDEDOR' && ['sales-list', 'ai-query'].includes(screen)" @navigate="navigate" />
+        <CashierSale v-else-if="activeRole === 'CAJERO' && ['cashier-session', 'register-sale'].includes(screen)" @busy="ventaEnProceso = $event" @navigate="navigate" />
+        <CashierHistory v-else-if="activeRole === 'CAJERO' && screen === 'sales-list'" @navigate="navigate" />
         <PendingModule v-else-if="pendingModule" :key="activeRole + screen"
           :title="pendingModule.title" :role-label="roleLabels[activeRole]"
           :description="pendingModule.description" @navigate="navigate" />
-        <MyInventory v-else-if="screen==='my-inventory'" :key="params.idEmpresa" :id-empresa="params.idEmpresa" @navigate="navigate" />
+        <EntrepreneurSale v-else-if="screen==='entrepreneur-sale'" :id-empresa="params.idEmpresa" @busy="ventaEnProceso = $event" @navigate="navigate" />
+        <MyInventory v-else-if="screen==='my-inventory'" :key="params.idEmpresa" :id-empresa="params.idEmpresa" @busy="ventaEnProceso = $event" @navigate="navigate" />
+        <MyBusinessMetrics v-else-if="screen==='my-business-metrics'" :id-empresa="params.idEmpresa" @navigate="navigate" />
         <MyBusinesses v-else-if="screen==='my-businesses'" @navigate="navigate" />
         <MyBusinessDetail v-else-if="screen==='my-business-detail'" :id-empresa="params.idEmpresa" @navigate="navigate" />
         <Users v-else-if="screen==='users-list'" @navigate="navigate" />
@@ -192,7 +242,7 @@ async function navigate(
         <BusinessCreate v-else-if="screen==='business-create'" @navigate="navigate" />
         <BusinessEdit v-else-if="screen==='business-edit'" :id-empresa="params.idEmpresa" @navigate="navigate" />
         <Sessions v-else-if="screen==='sessions-list'" :store="store" :current-user="contextUser" @navigate="navigate" />
-        <SessionDetail v-else-if="screen==='session-detail'" :id-jornada="params.idJornada" @navigate="navigate" />
+        <SessionDetail @busy="ventaEnProceso = $event" v-else-if="screen==='session-detail'" :id-jornada="params.idJornada" @navigate="navigate" />
         <SessionEdit v-else-if="screen==='session-edit'" :id-jornada="params.idJornada" @navigate="navigate" />
         <SessionCreate v-else-if="screen==='session-create'" @navigate="navigate" />
         <SessionCashiers v-else-if="screen==='session-cashiers'" :id-jornada="params.idJornada" @navigate="navigate" />

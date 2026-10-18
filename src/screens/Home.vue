@@ -1,11 +1,13 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 
 import AppHeader from '../components/AppHeader.vue'
 import { obtenerModulos, rolesDisponibles, roleLabels } from '../config/navigation.js'
 
 
 const props = defineProps({
+  actualizandoRoles: Boolean,
+  errorRoles: { type: String, default: '' },
   activeRole: { type: String, default: '' },
   user: {
     type: Object,
@@ -17,7 +19,8 @@ const props = defineProps({
 const emit = defineEmits([
   'navigate',
   'logout',
-  'change-role'
+  'change-role',
+  'refresh-roles'
 ])
 
 
@@ -44,6 +47,7 @@ const secciones = computed(() => {
 function abrirModulo(modulo) {
   emit('navigate', modulo.screen)
 }
+onMounted(() => emit('refresh-roles'))
 </script>
 
 
@@ -77,14 +81,24 @@ function abrirModulo(modulo) {
         </h2>
 
 
-        <label v-if="roles.length > 1" class="block mt-4">
-          <span class="block text-sm mb-1">Trabajar como</span>
-          <select :value="activeRole" @change="emit('change-role', $event.target.value)"
-            class="w-full min-h-12 rounded-xl bg-white text-[#2A6049] px-3 font-semibold">
-            <option v-for="rol in roles" :key="rol" :value="rol">{{ roleLabels[rol] }}</option>
-          </select>
-        </label>
-        <p v-else class="text-sm mt-3">{{ roleLabels[activeRole] || 'Sin rol habilitado' }}</p>
+        <section class="role-picker" aria-label="Elegir rol de trabajo">
+          <p class="role-heading">Trabajar como</p>
+          <div class="role-options">
+            <button v-for="rol in roles" :key="rol" type="button"
+              class="role-option" :class="{ 'is-active': activeRole === rol }"
+              :aria-pressed="activeRole === rol" :disabled="actualizandoRoles"
+              @click="emit('change-role', rol)">
+              <span aria-hidden="true">{{ { ADMINISTRADOR: '⚙', EMPRENDEDOR: '🏪', CAJERO: '🧾' }[rol] }}</span>
+              <span>{{ roleLabels[rol] }}</span>
+              <span v-if="activeRole === rol" class="role-check" aria-hidden="true">✓</span>
+            </button>
+          </div>
+          <p v-if="!roles.length" class="role-status">Sin rol habilitado.</p>
+          <p v-if="actualizandoRoles" role="status" class="role-status">Actualizando tus roles...</p>
+          <p v-if="errorRoles" role="alert" class="role-error">{{ errorRoles }}</p>
+          <button type="button" class="role-refresh" :disabled="actualizandoRoles"
+            @click="emit('refresh-roles')">Actualizar mis roles</button>
+        </section>
 
       </div>
 
@@ -204,3 +218,17 @@ function abrirModulo(modulo) {
   </div>
 
 </template>
+
+<style scoped>
+.role-picker { margin-top: 1rem; }
+.role-heading { margin: 0 0 .6rem; font-size: .875rem; font-weight: 600; color: #fff; }
+.role-options { display: grid; gap: .5rem; }
+.role-option { width: 100%; min-height: 48px; display: flex; align-items: center; gap: .65rem; padding: .7rem .85rem; border: 2px solid #d8e6df; border-radius: 12px; background: #fff; color: #254c3b; font: inherit; font-size: .875rem; font-weight: 600; text-align: left; cursor: pointer; }
+.role-option.is-active { background: #e6f5ef; border-color: #a4d7ba; color: #174c35; }
+.role-option:focus-visible, .role-refresh:focus-visible { outline: 3px solid #f4cf76; outline-offset: 3px; }
+.role-option:disabled, .role-refresh:disabled { opacity: .65; cursor: wait; }
+.role-check { margin-left: auto; font-weight: 800; }
+.role-status { margin-top: .6rem; color: #fff; font-size: .8rem; }
+.role-error { margin-top: .65rem; padding: .65rem; border-radius: 8px; background: #fff0ec; color: #8c281c; font-size: .8rem; }
+.role-refresh { display: block; min-height: 44px; margin-top: .35rem; padding: .5rem 0; border: 0; background: transparent; color: #fff; text-decoration: underline; font: inherit; font-size: .8rem; cursor: pointer; }
+</style>

@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 
 import AppHeader from '../components/AppHeader.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
-import RetirarProductoButton from '../components/RetirarProductoButton.vue'
+import RetirarProductos from '../components/RetirarProductos.vue'
 import RetirarCajeroButton from '../components/RetirarCajeroButton.vue'
 import JornadaEstadoButton from '../components/JornadaEstadoButton.vue'
 
@@ -23,10 +23,11 @@ const props = defineProps({
 
 
 const emit = defineEmits([
-  'navigate'
+  'navigate', 'busy'
 ])
 
 
+const ocupado = ref(false)
 const jornada = ref(null)
 const cajeros = ref([])
 const productos = ref([])
@@ -115,6 +116,15 @@ async function cargarJornada() {
   }
 }
 
+
+async function actualizarProductos() {
+  try {
+    const respuesta = await obtenerProductosJornada(props.idJornada)
+    productos.value = respuesta.productos || []
+  } catch (err) {
+    error.value = err.message || 'No se pudo actualizar el listado. Recarga la jornada.'
+  }
+}
 
 onMounted(() => {
   cargarJornada()
@@ -380,7 +390,7 @@ onMounted(() => {
         <!-- CAJEROS ASIGNADOS -->
 
         <BaseButton
-          v-if="jornada.estado"
+          v-if="jornada.estado" :disabled="ocupado"
           full
           variant="outline"
           class="mb-4"
@@ -545,7 +555,7 @@ onMounted(() => {
             </div>
 
             <RetirarCajeroButton
-              v-if="jornada.estado && cajero.estado"
+              v-if="jornada.estado && cajero.estado && !ocupado"
               class="mt-3"
               :jornada="jornada"
               :cajero="cajero"
@@ -561,31 +571,12 @@ onMounted(() => {
 
         <section class="mb-6">
           <h2 class="text-sm font-semibold mb-3">Productos de la jornada ({{ productos.filter(item => item.estado).length }} activos)</h2>
-          <BaseButton v-if="jornada.estado" full variant="outline" class="mb-3"
+          <BaseButton v-if="jornada.estado" :disabled="ocupado" full variant="outline" class="mb-3"
             @click="emit('navigate', 'session-products', { idJornada: jornada.id })">
             Asignar productos
           </BaseButton>
-          <p v-if="!productos.length" class="bg-[#F7F4F0] rounded-xl p-3 text-sm text-[#7A6558]">No existen productos asignados a esta jornada.</p>
-          <div v-else class="space-y-2">
-            <div v-for="item in productos" :key="item.id_jornada_producto" class="border border-[#D8CFC4] rounded-xl p-3 bg-[#FAF9F7]">
-              <div class="flex justify-between gap-3">
-                <p class="text-sm font-semibold break-words min-w-0">{{ item.producto.nombre }}</p>
-                <span class="text-xs rounded-full px-2 py-1 h-fit shrink-0"
-                  :class="item.estado ? 'bg-[#E6F5EF] text-[#1E6B47]' : 'bg-[#EEE] text-[#666]'">
-                  {{ item.estado ? 'Activo' : 'Inactivo' }}
-                </span>
-              </div>
-              <p class="text-xs text-[#7A6558] mt-2">Stock actual: {{ item.producto.cantidad }} · Bs {{ Number(item.producto.precio_final).toFixed(2) }}</p>
-              <p class="text-xs text-[#7A6558] mt-1">Asignado: {{ formatearFecha(item.fecha) }}</p>
-              <RetirarProductoButton
-                v-if="jornada.estado && item.estado"
-                class="mt-3"
-                :jornada="jornada"
-                :producto="item"
-                @updated="cargarJornada"
-              />
-            </div>
-          </div>
+          <RetirarProductos :jornada="jornada" :productos="productos"
+            @busy="ocupado = $event; emit('busy', $event)" @updated="actualizarProductos" />
         </section>
 
         <!-- ACCIONES -->
@@ -599,7 +590,7 @@ onMounted(() => {
         >
 
           <BaseButton
-            v-if="jornada.estado"
+            v-if="jornada.estado" :disabled="ocupado"
             variant="outline"
             class="flex-1"
             @click="
@@ -619,7 +610,7 @@ onMounted(() => {
 
 
 
-          <JornadaEstadoButton :jornada="jornada" @updated="cargarJornada" />
+          <JornadaEstadoButton v-if="!ocupado" :jornada="jornada" @updated="cargarJornada" />
 
         </div>
 
