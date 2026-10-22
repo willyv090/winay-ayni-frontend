@@ -23,6 +23,7 @@ const periodo = computed(() => {
   if (!p.hasta) return 'Desde ' + fecha(p.desde)
   return fecha(p.desde) + ' — ' + fecha(p.hasta)
 })
+const destacado = computed(() => datos.value?.ranking?.[0] || null)
 const maximo = computed(() => datos.value?.ranking[0]?.unidades_vendidas || 1)
 async function cargar() {
   errorFechas.value = ''
@@ -97,6 +98,16 @@ watch(tipo, limpiar)
           <div class="metric-card"><dt>Productos distintos</dt><dd>{{ datos.resumen.productos_vendidos }}</dd></div>
           <div class="metric-card"><dt>Promedio por venta</dt><dd class="!text-base">Bs {{ dinero(datos.resumen.promedio_por_venta) }}</dd></div>
         </dl>
+        <section class="bg-[#E6F5EF] border border-[#B7DCC8] rounded-2xl p-4 mt-4">
+          <h2 class="font-semibold text-[#254c3b]">Tu producto más vendido</h2>
+          <template v-if="destacado">
+            <p class="text-lg font-semibold mt-2 break-words">{{ destacado.producto.nombre }}</p>
+            <p v-if="!destacado.producto.estado" class="text-xs mt-1">Producto archivado</p>
+            <p class="text-sm mt-2">{{ destacado.unidades_vendidas }} unidades · Bs {{ dinero(destacado.total_vendido) }} vendidos</p>
+            <p class="text-xs text-[#7A6558] mt-2">Según la empresa, el tipo de venta y el periodo mostrados. En empate de unidades, se prioriza el importe vendido.</p>
+          </template>
+          <p v-else class="text-sm mt-2">Todavía no hay ventas para destacar un producto con estos filtros.</p>
+        </section>
         <section class="bg-white border border-[#D8CFC4] rounded-2xl p-4 mt-4">
           <h2 class="font-semibold">Productos más vendidos</h2>
           <p class="text-xs text-[#7A6558] mt-1">Los 10 primeros por unidades vendidas. En empate, se ordenan por importe vendido.</p>

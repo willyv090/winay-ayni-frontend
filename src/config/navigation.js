@@ -19,12 +19,12 @@ export const modules = [
   { id: 'usuarios', title: 'Usuarios', description: 'Gestionar usuarios y roles', icon: '👥', screen: 'users-list', roles: ['ADMINISTRADOR'], section: 'Administración' },
   { id: 'empresas', title: 'Empresas', description: 'Gestionar empresas y sus integrantes', icon: '🏪', screen: 'businesses-list', roles: ['ADMINISTRADOR'], section: 'Administración' },
   { id: 'jornadas', title: 'Jornadas', description: 'Organizar jornadas, cajeros y productos', icon: '📅', screen: 'sessions-list', roles: ['ADMINISTRADOR'], section: 'Administración' },
-  { id: 'resultados', title: 'Resultados', description: 'Consultar cierres de jornadas', icon: '📊', screen: 'session-results', roles: ['ADMINISTRADOR'], section: 'Consultas', pendiente: true },
-  { id: 'metricas', title: 'Métricas', description: 'Consultar indicadores generales', icon: '📈', screen: 'metrics', roles: ['ADMINISTRADOR'], section: 'Consultas', pendiente: true },
+  { id: 'resultados', title: 'Resultados', description: 'Consultar ventas y totales por día de feria', icon: '📊', screen: 'session-results', roles: ['ADMINISTRADOR'], section: 'Consultas' },
+  { id: 'metricas', title: 'Métricas', description: 'Comparar ventas y rendimiento entre ferias', icon: '📈', screen: 'metrics', roles: ['ADMINISTRADOR'], section: 'Consultas' },
   { id: 'mis-empresas', title: 'Mis empresas', description: 'Consultar mis empresas vinculadas', icon: '🏪', screen: 'my-businesses', roles: ['EMPRENDEDOR'], section: 'Mi emprendimiento' },
   { id: 'jornada-actual', title: 'Jornada asignada', description: 'Operar en una jornada con asignación activa', icon: '🗓️', screen: 'cashier-session', roles: ['CAJERO'], section: 'Caja', pendiente: true },
   { id: 'nueva-venta', title: 'Nueva venta', description: 'Vender productos de la jornada asignada', icon: '🛒', screen: 'register-sale', roles: ['CAJERO'], section: 'Caja', pendiente: true },
-  { id: 'ventas', title: 'Ventas', description: 'Consultar ventas según mi función', icon: '🧾', screen: 'sales-list', roles: Object.keys(roleLabels), section: 'Consultas', pendiente: true },
+  { id: 'ventas', title: 'Ventas', description: 'Consultar ventas según mi función', icon: '🧾', screen: 'sales-list', roles: ['CAJERO', 'EMPRENDEDOR'], section: 'Consultas', pendiente: true },
   { id: 'consulta', title: 'Consulta informativa', description: 'Consultar información de productos', icon: '🤖', screen: 'ai-query', roles: Object.keys(roleLabels), section: 'Consultas', pendiente: true }
 ]
 
@@ -159,13 +159,11 @@ export const screenPermissions = {
   // ===================================================
 
   'sales-list': [
-    'ADMINISTRADOR',
     'CAJERO',
     'EMPRENDEDOR'
   ],
 
   'sale-detail': [
-    'ADMINISTRADOR',
     'CAJERO',
     'EMPRENDEDOR'
   ],
@@ -190,14 +188,14 @@ export function puedeAcceder(screen, roles = [], rolActivo = '') {
 export function obtenerBottomTabs(roles = [], rolActivo = '') {
   const inicio = { screen: 'home', icon: '⌂', label: 'Inicio' }
   const opciones = {
-    ADMINISTRADOR: ['users-list', 'sessions-list', 'sales-list', 'ai-query'],
+    ADMINISTRADOR: ['users-list', 'sessions-list', 'session-results', 'ai-query'],
     EMPRENDEDOR: ['my-businesses', 'entrepreneur-sale', 'sales-list', 'ai-query'],
     CAJERO: ['cashier-session', 'register-sale', 'sales-list', 'ai-query']
   }
   if (!rolesDisponibles(roles).includes(rolActivo)) return [inicio]
   return [inicio, ...(opciones[rolActivo] || []).map(screen => {
     const modulo = modules.find(item => item.screen === screen)
-    const label = { 'entrepreneur-sale': 'Vender', 'users-list': 'Usuarios', 'sessions-list': 'Jornadas', 'my-businesses': 'Empresas', 'my-inventory': 'Inventario', 'cashier-session': 'Jornada', 'register-sale': 'Vender', 'sales-list': 'Ventas', 'ai-query': 'Consulta' }[screen]
+    const label = { 'entrepreneur-sale': 'Vender', 'session-results': 'Resultados', 'users-list': 'Usuarios', 'sessions-list': 'Jornadas', 'my-businesses': 'Empresas', 'my-inventory': 'Inventario', 'cashier-session': 'Jornada', 'register-sale': 'Vender', 'sales-list': 'Ventas', 'ai-query': 'Consulta' }[screen]
     return { screen, icon: modulo.icon, label }
   })]
 }

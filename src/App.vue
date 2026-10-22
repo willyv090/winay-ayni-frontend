@@ -21,6 +21,8 @@ import SessionCreate from './screens/SessionCreate.vue'
 import SessionCashiers from './screens/SessionCashiers.vue'
 import SessionProducts from './screens/SessionProducts.vue'
 import CashierSale from './screens/CashierSale.vue'
+import AdminMetrics from './screens/AdminMetrics.vue'
+import SessionResults from './screens/SessionResults.vue'
 import CashierHistory from './screens/CashierHistory.vue'
 import EntrepreneurSale from './screens/EntrepreneurSale.vue'
 import MyInventory from './screens/MyInventory.vue'
@@ -221,6 +223,8 @@ async function navigate(
         <EntrepreneurMetrics v-else-if="activeRole === 'EMPRENDEDOR' && ['sales-list', 'ai-query'].includes(screen)" @navigate="navigate" />
         <CashierSale v-else-if="activeRole === 'CAJERO' && ['cashier-session', 'register-sale'].includes(screen)" @busy="ventaEnProceso = $event" @navigate="navigate" />
         <CashierHistory v-else-if="activeRole === 'CAJERO' && screen === 'sales-list'" @navigate="navigate" />
+        <SessionResults v-else-if="activeRole === 'ADMINISTRADOR' && screen === 'session-results'" @navigate="navigate" />
+        <AdminMetrics v-else-if="activeRole === 'ADMINISTRADOR' && screen === 'metrics'" @navigate="navigate" />
         <PendingModule v-else-if="pendingModule" :key="activeRole + screen"
           :title="pendingModule.title" :role-label="roleLabels[activeRole]"
           :description="pendingModule.description" @navigate="navigate" />

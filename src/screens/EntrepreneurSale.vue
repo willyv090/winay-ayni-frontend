@@ -15,6 +15,8 @@ const productos = ref([])
 const idEmpresa = ref('')
 const idMetodo = ref('')
 const cantidades = ref({})
+const descuentos = ref({})
+const precioVenta = p => (Math.round(Number(p.precio_u) * 100) - (descuentos.value[p.id] ? Math.round(Number(p.rebaja || 0) * 100) : 0)) / 100
 const busqueda = ref('')
 const fecha = ref('')
 const loading = ref(true)
@@ -29,10 +31,10 @@ const resultadoIncierto = ref(false)
 let solicitud = 0
 const empresa = computed(() => empresas.value.find(e => Number(e.id) === Number(idEmpresa.value)))
 const metodo = computed(() => metodos.value.find(m => Number(m.id) === Number(idMetodo.value)))
-const visibles = computed(() => productos.value.filter(p => p.nombre.toLocaleLowerCase('es').includes(busqueda.value.trim().toLocaleLowerCase('es'))))
+const visibles = computed(() => productos.value.filter(p => (String(p.id) === busqueda.value.trim() || p.nombre.toLocaleLowerCase('es').includes(busqueda.value.trim().toLocaleLowerCase('es')))))
 const seleccionados = computed(() => productos.value.filter(p => cantidades.value[p.id] !== undefined))
 const total = computed(() => seleccionados.value.reduce((suma, p) =>
-  suma + Math.round(Number(p.precio_final) * 100) * (Number(cantidades.value[p.id]) || 0), 0) / 100)
+  suma + Math.round(precioVenta(p) * 100) * (Number(cantidades.value[p.id]) || 0), 0) / 100)
 const dinero = valor => Number(valor).toFixed(2)
 
 async function cargar() {
@@ -58,6 +60,7 @@ async function cargarProductos() {
   const actual = ++solicitud
   productos.value = []
   cantidades.value = {}
+  descuentos.value = {}
   busqueda.value = ''
   errorProductos.value = ''
   error.value = ''
@@ -112,7 +115,8 @@ async function guardar() {
   try {
     const datos = {
       id_metodo_pago: Number(idMetodo.value),
-      detalles: seleccionados.value.map(p => ({ id_producto: Number(p.id), cantidad: Number(cantidades.value[p.id]) }))
+      total_esperado: total.value,
+      detalles: seleccionados.value.map(p => ({ id_producto: Number(p.id), cantidad: Number(cantidades.value[p.id]), aplicar_descuento: !!descuentos.value[p.id] }))
     }
     if (fecha.value) datos.fecha = fecha.value
     const respuesta = await registrarVentaIndependiente(datos)
@@ -187,7 +191,7 @@ onMounted(cargar)
               </div>
               <template v-else-if="empresa">
                 <label class="block text-sm font-semibold">Buscar producto
-                  <input v-model="busqueda" type="search" placeholder="Nombre del producto" class="sale-input" />
+                  <input v-model="busqueda" type="search" placeholder="Nombre o código del producto" class="sale-input" />
                 </label>
                 <p v-if="!productos.length" class="text-sm text-[#7A6558]">Esta empresa no tiene productos activos.</p>
                 <p v-else-if="!visibles.length" class="text-sm text-[#7A6558]">No hay productos que coincidan con la búsqueda.</p>
@@ -196,8 +200,12 @@ onMounted(cargar)
                     <input type="checkbox" :checked="cantidades[p.id] !== undefined" :disabled="p.cantidad <= 0" @change="seleccionar(p, $event.target.checked)" class="w-5 h-5 shrink-0 accent-[#2A6049]" />
                     <span class="min-w-0">
                       <span class="block font-semibold text-sm break-words">{{ p.nombre }}</span>
-                      <span class="block text-xs text-[#7A6558] mt-1">Bs {{ dinero(p.precio_final) }} · {{ p.cantidad > 0 ? 'Stock: ' + p.cantidad : 'Sin stock' }}</span>
+                      <span class="block text-xs text-[#7A6558] mt-1">Bs {{ dinero(precioVenta(p)) }} · {{ p.cantidad > 0 ? 'Stock: ' + p.cantidad : 'Sin stock' }}</span>
                     </span>
+                  </label>
+                  <label v-if="cantidades[p.id] !== undefined && Number(p.rebaja) > 0" class="flex items-center gap-3 text-sm mt-3 min-h-12">
+                    <input v-model="descuentos[p.id]" type="checkbox" class="w-5 h-5 accent-[#2A6049]" />
+                    Aplicar descuento de Bs {{ dinero(p.rebaja) }} por unidad
                   </label>
                   <label v-if="cantidades[p.id] !== undefined" class="block text-sm mt-3">Cantidad
                     <input v-model="cantidades[p.id]" required type="number" min="1" :max="p.cantidad" step="1" inputmode="numeric" class="sale-input" />
@@ -223,13 +231,14 @@ onMounted(cargar)
               <ul class="divide-y divide-[#D8CFC4] mt-3">
                 <li v-for="p in seleccionados" :key="p.id" class="py-3 text-sm">
                   <p class="font-semibold break-words">{{ p.nombre }}</p>
-                  <p>{{ cantidades[p.id] }} × Bs {{ dinero(p.precio_final) }} = Bs {{ dinero(Number(cantidades[p.id]) * Number(p.precio_final)) }}</p>
+                  <p class="text-xs">{{ descuentos[p.id] ? "Con descuento de Bs " + dinero(p.rebaja) + " por unidad" : "Sin descuento" }}</p>
+                  <p>{{ cantidades[p.id] }} × Bs {{ dinero(precioVenta(p)) }} = Bs {{ dinero(Number(cantidades[p.id]) * precioVenta(p)) }}</p>
                 </li>
               </ul>
               <p class="text-sm mt-3">Pago: {{ metodo?.nombre }}</p>
               <p class="text-sm mt-2">Fecha: {{ fecha ? fecha.replace('T', ' ') : 'Al registrar' }}</p>
               <p class="font-semibold text-xl mt-4">Total estimado: Bs {{ dinero(total) }}</p>
-              <p class="text-xs text-[#7A6558] mt-2">Al confirmar se aplicarán los precios vigentes y se descontarán las existencias.</p>
+              <p class="text-xs text-[#7A6558] mt-2">Al confirmar se validarán el precio y el descuento elegido y se descontarán las existencias.</p>
               <BaseButton full class="mt-5" type="submit" :loading="guardando">{{ guardando ? 'Registrando...' : 'Confirmar y registrar' }}</BaseButton>
               <BaseButton full class="mt-3" type="button" variant="secondary" @click="volver">Volver a editar</BaseButton>
             </section>

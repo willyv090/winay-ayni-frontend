@@ -15,6 +15,8 @@ const productos = ref([])
 const idJornada = ref('')
 const idMetodo = ref('')
 const cantidades = ref({})
+const descuentos = ref({})
+const precioVenta = p => (Math.round(Number(p.precio_u) * 100) - (descuentos.value[p.id] ? Math.round(Number(p.rebaja || 0) * 100) : 0)) / 100
 const busqueda = ref('')
 const filtroEmpresa = ref('')
 const recibido = ref('')
@@ -32,10 +34,10 @@ const resultadoIncierto = ref(false)
 let solicitud = 0
 const jornada = computed(() => jornadas.value.find(e => Number(e.id) === Number(idJornada.value)))
 const metodo = computed(() => metodos.value.find(m => Number(m.id) === Number(idMetodo.value)))
-const visibles = computed(() => productos.value.filter(p => (!filtroEmpresa.value || Number(p.empresa.id) === Number(filtroEmpresa.value)) && (p.nombre + ' ' + p.empresa.nombre).toLocaleLowerCase('es').includes(busqueda.value.trim().toLocaleLowerCase('es'))))
+const visibles = computed(() => productos.value.filter(p => (!filtroEmpresa.value || Number(p.empresa.id) === Number(filtroEmpresa.value)) && (String(p.id) === busqueda.value.trim() || (p.nombre + ' ' + p.empresa.nombre).toLocaleLowerCase('es').includes(busqueda.value.trim().toLocaleLowerCase('es')))))
 const seleccionados = computed(() => productos.value.filter(p => cantidades.value[p.id] !== undefined))
 const total = computed(() => seleccionados.value.reduce((suma, p) =>
-  suma + Math.round(Number(p.precio_final) * 100) * (Number(cantidades.value[p.id]) || 0), 0) / 100)
+  suma + Math.round(precioVenta(p) * 100) * (Number(cantidades.value[p.id]) || 0), 0) / 100)
 const dinero = valor => Number(valor).toFixed(2)
 
 async function cargar() {
@@ -61,6 +63,7 @@ async function cargarProductos() {
   const actual = ++solicitud
   productos.value = []
   cantidades.value = {}
+  descuentos.value = {}
   busqueda.value = ''
   filtroEmpresa.value = ''
   recibido.value = ''
@@ -119,7 +122,7 @@ async function guardar() {
       id_metodo_pago: Number(idMetodo.value),
       id_jornada_cajero: jornada.value.id_jornada_cajero,
       total_esperado: total.value,
-      detalles: seleccionados.value.map(p => ({ id_jornada_producto: Number(p.id_jornada_producto), cantidad: Number(cantidades.value[p.id]) }))
+      detalles: seleccionados.value.map(p => ({ id_jornada_producto: Number(p.id_jornada_producto), cantidad: Number(cantidades.value[p.id]), aplicar_descuento: !!descuentos.value[p.id] }))
     }
     const respuesta = await registrarVentaCaja(datos)
     if (!respuesta.venta?.id) throw new Error('Respuesta de registro incompleta.')
@@ -197,7 +200,7 @@ onMounted(cargar)
                   </select>
                 </label>
                 <label class="block text-sm font-semibold">Buscar producto
-                  <input v-model="busqueda" type="search" placeholder="Nombre del producto" class="sale-input" />
+                  <input v-model="busqueda" type="search" placeholder="Nombre o código del producto" class="sale-input" />
                 </label>
                 <p v-if="!productos.length" class="text-sm text-[#7A6558]">Esta jornada no tiene productos habilitados para vender.</p>
                 <p v-else-if="!visibles.length" class="text-sm text-[#7A6558]">No hay productos que coincidan con la búsqueda.</p>
@@ -207,8 +210,12 @@ onMounted(cargar)
                     <span class="min-w-0">
                       <span class="block font-semibold text-sm break-words">{{ p.nombre }}</span>
                       <span class="block text-xs text-[#2A6049]">{{ p.empresa.nombre }}</span>
-                      <span class="block text-xs text-[#7A6558] mt-1">Bs {{ dinero(p.precio_final) }} · {{ p.cantidad > 0 ? 'Stock: ' + p.cantidad : 'Sin stock' }}</span>
+                      <span class="block text-xs text-[#7A6558] mt-1">Bs {{ dinero(precioVenta(p)) }} · {{ p.cantidad > 0 ? 'Stock: ' + p.cantidad : 'Sin stock' }}</span>
                     </span>
+                  </label>
+                  <label v-if="cantidades[p.id] !== undefined && Number(p.rebaja) > 0" class="flex items-center gap-3 text-sm mt-3 min-h-12">
+                    <input v-model="descuentos[p.id]" type="checkbox" class="w-5 h-5 accent-[#2A6049]" />
+                    Aplicar descuento de Bs {{ dinero(p.rebaja) }} por unidad
                   </label>
                   <label v-if="cantidades[p.id] !== undefined" class="block text-sm mt-3">Cantidad
                     <input v-model="cantidades[p.id]" required type="number" min="1" :max="p.cantidad" step="1" inputmode="numeric" class="sale-input" />
@@ -230,7 +237,8 @@ onMounted(cargar)
               <ul class="divide-y divide-[#D8CFC4] mt-3">
                 <li v-for="p in seleccionados" :key="p.id" class="py-3 text-sm">
                   <p class="font-semibold break-words">{{ p.nombre }}</p><p class="text-xs text-[#2A6049]">{{ p.empresa.nombre }}</p>
-                  <p>{{ cantidades[p.id] }} × Bs {{ dinero(p.precio_final) }} = Bs {{ dinero(Number(cantidades[p.id]) * Number(p.precio_final)) }}</p>
+                  <p class="text-xs">{{ descuentos[p.id] ? "Con descuento de Bs " + dinero(p.rebaja) + " por unidad" : "Sin descuento" }}</p>
+                  <p>{{ cantidades[p.id] }} × Bs {{ dinero(precioVenta(p)) }} = Bs {{ dinero(Number(cantidades[p.id]) * precioVenta(p)) }}</p>
                 </li>
               </ul>
               <p class="text-sm mt-3">Pago: {{ metodo?.nombre }}</p>

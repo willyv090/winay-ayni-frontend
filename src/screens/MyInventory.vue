@@ -24,7 +24,7 @@ const formulario = ref({})
 let solicitud = 0
 const visibles = computed(() => productos.value.filter(p =>
   (estado.value === 'todos' || p.estado === (estado.value === 'activos')) &&
-  p.nombre.toLocaleLowerCase('es').includes(busqueda.value.trim().toLocaleLowerCase('es'))
+  (String(p.id) === busqueda.value.trim() || p.nombre.toLocaleLowerCase('es').includes(busqueda.value.trim().toLocaleLowerCase('es')))
 ))
 const dinero = valor => Number(valor).toFixed(2)
 const fecha = valor => valor ? valor.split('-').reverse().join('/') : 'Sin fecha'
@@ -151,8 +151,8 @@ watch(() => props.idEmpresa, () => {
         <p v-if="!empresa.estado" class="text-sm text-[#7A6558] mb-4">Empresa inactiva: el inventario está disponible solo para consulta.</p>
         <template v-if="vista === 'lista'">
           <BaseButton v-if="empresa.estado" full class="mb-4" @click="nuevo">Crear producto</BaseButton>
-          <label class="block mb-3 text-sm font-semibold">Buscar por nombre
-            <input v-model="busqueda" type="search" class="w-full h-12 border border-[#D8CFC4] rounded-xl px-3 mt-1 bg-white" placeholder="Nombre del producto" />
+          <label class="block mb-3 text-sm font-semibold">Buscar por nombre o código
+            <input v-model="busqueda" type="search" class="w-full h-12 border border-[#D8CFC4] rounded-xl px-3 mt-1 bg-white" placeholder="Nombre o código del producto" />
           </label>
           <label class="block mb-4 text-sm font-semibold">Estado
             <select v-model="estado" class="w-full h-12 border border-[#D8CFC4] rounded-xl px-3 mt-1 bg-white">
@@ -165,7 +165,7 @@ watch(() => props.idEmpresa, () => {
             <article v-for="p in visibles" :key="p.id" class="bg-white border border-[#D8CFC4] rounded-2xl p-4">
               <h2 class="font-semibold break-words">{{ p.nombre }}</h2>
               <p class="text-xs text-[#7A6558] mt-1">{{ p.estado ? 'Activo' : 'Archivado' }}</p>
-              <p class="text-sm mt-3">Stock: {{ p.cantidad }} · Precio final: Bs {{ dinero(p.precio_final) }}</p>
+              <p class="text-sm mt-3">Stock: {{ p.cantidad }} · Precio con descuento: Bs {{ dinero(p.precio_final) }}</p>
               <BaseButton full variant="outline" class="mt-3" @click="ver(p.id)">Ver producto</BaseButton>
             </article>
           </div>
@@ -177,7 +177,7 @@ watch(() => props.idEmpresa, () => {
             <div><dt class="text-[#7A6558]">Stock actual</dt><dd class="font-semibold">{{ producto.cantidad }}</dd></div>
             <div><dt class="text-[#7A6558]">Precio unitario</dt><dd>Bs {{ dinero(producto.precio_u) }}</dd></div>
             <div><dt class="text-[#7A6558]">Rebaja</dt><dd>Bs {{ dinero(producto.rebaja) }}</dd></div>
-            <div><dt class="text-[#7A6558]">Precio final</dt><dd>Bs {{ dinero(producto.precio_final) }}</dd></div>
+            <div><dt class="text-[#7A6558]">Precio con descuento</dt><dd>Bs {{ dinero(producto.precio_final) }}</dd></div>
             <div><dt class="text-[#7A6558]">Ingreso</dt><dd>{{ fecha(producto.fecha_ingreso) }}</dd></div>
             <div><dt class="text-[#7A6558]">Salida</dt><dd>{{ fecha(producto.fecha_salida) }}</dd></div>
             <div class="col-span-2"><dt class="text-[#7A6558]">Notas</dt><dd class="whitespace-pre-wrap break-words">{{ producto.notas || 'Sin notas' }}</dd></div>
@@ -199,7 +199,7 @@ watch(() => props.idEmpresa, () => {
             <label class="block text-sm font-semibold">Precio unitario (Bs)
               <input v-model="formulario.precio_u" required type="number" min="0.01" step="0.01" inputmode="decimal" class="inventory-input" />
             </label>
-            <label class="block text-sm font-semibold">Rebaja (Bs)
+            <label class="block text-sm font-semibold">Descuento opcional por unidad (Bs)
               <input v-model="formulario.rebaja" required type="number" min="0" :max="formulario.precio_u" step="0.01" inputmode="decimal" class="inventory-input" />
             </label>
             <label class="block text-sm font-semibold">Fecha de ingreso

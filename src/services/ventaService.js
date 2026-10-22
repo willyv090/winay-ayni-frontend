@@ -34,5 +34,24 @@ export const listarCatalogoCaja = id => apiRequest(`/api/jornadas/${id}/producto
 export const registrarVentaCaja = datos => apiRequest('/api/ventas', {
   method: 'POST', body: JSON.stringify({ ...datos, tipo: 'JORNADA' })
 })
-export const listarVentasCaja = () => apiRequest('/api/ventas?rol=CAJERO', { method: 'GET' })
+export const listarVentasCaja = (idJornada = null) => {
+  const filtros = new URLSearchParams({ rol: 'CAJERO' })
+  if (idJornada !== null) filtros.set('id_jornada', String(idJornada))
+  return apiRequest(`/api/ventas?${filtros}`, { method: 'GET' })
+}
 export const detalleVentaCaja = id => apiRequest(`/api/ventas/${id}/detalles?rol=CAJERO`, { method: 'GET' })
+
+export const listarVentasFeriaAdmin = (idJornada, idPersona = null) => {
+  const filtros = new URLSearchParams({ rol: 'ADMINISTRADOR', tipo: 'JORNADA', id_jornada: String(idJornada) })
+  if (idPersona) filtros.set('id_persona', String(idPersona))
+  return apiRequest(`/api/ventas?${filtros}`, { method: 'GET' })
+}
+export const detalleVentaAdmin = id => apiRequest(`/api/ventas/${id}/detalles?rol=ADMINISTRADOR`, { method: 'GET' })
+
+export const obtenerMetricasAdmin = (idJornada = '', desde = '', hasta = '') => {
+  const filtros = new URLSearchParams()
+  if (idJornada) filtros.set('id_jornada', String(idJornada))
+  if (desde) filtros.set('desde', desde)
+  if (hasta) filtros.set('hasta', hasta)
+  return apiRequest(`/api/ventas/metricas/admin?${filtros}`, { method: 'GET' })
+}

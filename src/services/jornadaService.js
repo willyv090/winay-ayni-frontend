@@ -74,3 +74,5 @@ export async function retirarProductoJornada(idJornada, idProducto) {
     method: 'DELETE'
   })
 }
+
+export const obtenerReporteJornada = id => apiRequest(`/api/jornadas/${id}/reporte`, { method: 'GET' })
